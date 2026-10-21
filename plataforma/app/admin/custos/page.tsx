@@ -1,21 +1,35 @@
 import { Explicacao } from "@/app/explicacao";
 import { Tabela } from "@/app/tabela";
-import { Secao, Titulo, botaoLink } from "@/app/ui";
+import { Cartao, Secao, Titulo, botaoLink, rotulo } from "@/app/ui";
 import { banco } from "@/banco";
 import { brl, dataBr, formatarCnpj } from "@contabilizadev/nucleo/formato";
 import { NOMES, ultimoDiaDoPeriodo } from "@contabilizadev/nucleo/serpro/precos";
 import { exigirAreaDoAdmin } from "@/lib/autenticacao/servidor";
-import { custosPorCliente, DESDE_O_INICIO, escolhaDoEndereco, periodosComChamadas, TIPOS, type Quantidades } from "@/lib/serpro/custos";
+import { custosMensais, custosPorCliente, DESDE_O_INICIO, escolhaDoEndereco, periodosComChamadas, TIPOS, type Quantidades } from "@/lib/serpro/custos";
 
 export const metadata = { title: "Custos · ContabilizaDev" };
 
 // Área do administrador, só ADMIN: o custo por cliente das chamadas ao Serpro, lido só do banco (serpro_chamadas). O
 // período é o de cobrança do Serpro (21 a 20); o cálculo e a regra de arredondamento estão em lib/serpro/custos.ts.
-// O custo total da plataforma (projeção, limite do contrato) fica para uma tela seguinte.
+// Abaixo, o custo total e o custo mensal da plataforma com o Serpro, também só do banco e sem depender do seletor.
 const nomeDoPeriodo = (chave: string) => (chave === DESDE_O_INICIO ? "Desde o início" : `${dataBr(chave)} a ${dataBr(ultimoDiaDoPeriodo(chave))}`);
 const reais = (centavos: number) => brl(centavos / 100);
 const numero = (n: number) => n.toLocaleString("pt-BR");
 const celulasDeQuantidade = (q: Quantidades) => Object.fromEntries(TIPOS.map((t) => [t, numero(q[t])]));
+
+// Cartão de linhas nome/valor, como em ../fiscal/app/config/serpro/page.tsx.
+function Linhas({ itens }: { itens: [string, React.ReactNode][] }) {
+  return (
+    <dl className="text-sm">
+      {itens.map(([nome, valor]) => (
+        <div key={nome} className="flex flex-wrap justify-between gap-x-4 border-t border-line py-2.5 first:border-t-0">
+          <dt className="text-muted">{nome}</dt>
+          <dd className="font-medium tabular-nums">{valor}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 export default async function Custos({ searchParams }: { searchParams: Promise<{ periodo?: string | string[] }> }) {
   await exigirAreaDoAdmin("/admin/custos");
@@ -26,6 +40,7 @@ export default async function Custos({ searchParams }: { searchParams: Promise<{
   // Período válido mas sem chamadas (e que não é o atual): mostra o atual, como um endereço inválido.
   const escolha = pedido === DESDE_O_INICIO || periodos.includes(pedido) ? pedido : periodos[0];
   const custos = await custosPorCliente(banco(), escolha);
+  const mensal = await custosMensais(banco(), agora);
 
   return (
     <>
@@ -99,6 +114,67 @@ export default async function Custos({ searchParams }: { searchParams: Promise<{
             },
           }))}
           rodape={custos.linhas.length ? { cliente: escolha === DESDE_O_INICIO ? "Soma desde o início" : "Soma do período", ...celulasDeQuantidade(custos.total.quantidades), custo: reais(custos.total.centavos) } : undefined}
+        />
+      </Secao>
+
+      <Secao
+        titulo="Custo total"
+        explicacao={
+          <Explicacao
+            rotulo="O que entra no custo total?"
+            texto={[
+              "Todas as chamadas cobradas ao Serpro desde a primeira, de todos os clientes, das empresas removidas e da própria plataforma. Não depende do período escolhido acima.",
+              "Cada período usa o preço da faixa em que caiu o total do tipo naquele período. É o preço da faixa: recusas (por exemplo, falta de autorização) podem não ser cobradas pelo Serpro.",
+            ]}
+          />
+        }
+      >
+        <Cartao className="flex flex-col gap-3 px-6 py-5">
+          <span className={rotulo}>Serpro</span>
+          <Linhas
+            itens={[
+              [`Período atual (${nomeDoPeriodo(mensal.atual.periodo)}) até agora`, reais(mensal.atual.centavos)],
+              ["Desde o início", reais(mensal.total.centavos)],
+              ["Chamadas cobradas desde o início", numero(mensal.total.chamadas)],
+            ]}
+          />
+        </Cartao>
+      </Secao>
+
+      <Secao
+        titulo="Custo mensal"
+        explicacao={
+          <Explicacao
+            rotulo="Como é calculado o custo mensal?"
+            texto={[
+              "Uma linha por período de cobrança do Serpro (do dia 21 ao dia 20 do mês seguinte, no horário de Brasília) que teve chamadas cobradas, mais o período atual. A autenticação não é cobrada e não entra.",
+              "O preço de cada tipo é o da faixa em que caiu o total daquele tipo no período; o custo do período é a soma de quantidade × preço. É o preço da faixa: recusas podem não ser cobradas pelo Serpro.",
+            ]}
+          />
+        }
+      >
+        <Tabela
+          rotulo="Custo mensal"
+          vazio="Nenhuma chamada cobrada ainda."
+          colunas={[
+            { chave: "periodo", titulo: "Período", principal: true },
+            ...TIPOS.flatMap((t) => [
+              { chave: t, titulo: NOMES[t], alinhar: "direita" as const },
+              { chave: `preco-${t}`, titulo: `Preço ${NOMES[t].toLowerCase()}`, alinhar: "direita" as const },
+            ]),
+            { chave: "custo", titulo: "Custo", alinhar: "direita" },
+          ]}
+          linhas={mensal.periodos.map((p) => ({
+            chave: p.periodo,
+            celulas: {
+              periodo: `${nomeDoPeriodo(p.periodo)}${p.periodo === mensal.atual.periodo ? " (atual)" : ""}`,
+              ...celulasDeQuantidade(p.quantidades),
+              // O preço só aparece para o tipo que teve chamada no período.
+              ...Object.fromEntries(TIPOS.map((t) => [`preco-${t}`, p.quantidades[t] ? reais(p.precos[t]) : "—"])),
+              custo: reais(p.centavos),
+            },
+          }))}
+          rodape={{ periodo: "Soma desde o início", ...celulasDeQuantidade(mensal.total.quantidades), ...Object.fromEntries(TIPOS.map((t) => [`preco-${t}`, "—"])), custo: reais(mensal.total.centavos) }}
         />
       </Secao>
     </>

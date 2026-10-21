@@ -2,7 +2,7 @@
 
 ## Situação
 
-**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 1 da quinta rodada de ajustes (custo por cliente). Não há pendências (ver seções Ajustes).
+**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 2 da sexta rodada de ajustes (custo mensal e total). Não há pendências (ver seções Ajustes).
 
 ## Resumo da entrega
 
@@ -223,3 +223,40 @@
 ### Situação
 
 **Aprovada.** `npm test`: núcleo 376/376, plataforma 1350/1350; `typecheck` e `lint` sem erros. Na 3003, com os dados reais, R$ 5,92 (22 consultas, 2 emissões) no período 21/09 a 20/10/2026 e desde o início; nenhuma chamada nova em `serpro_chamadas` (28). Para ver a linha de soma no HTML da 3003 é preciso reiniciar o `npx next dev -p 3003`. Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.
+
+## Ajustes (custo mensal e total, 21/10/2026)
+
+Pedido do usuário: "Quero custo mensal e total".
+
+### Correções pedidas
+
+1. Seções Custo total e Custo mensal abaixo do custo por cliente, lendo só `serpro_chamadas`.
+2. Cartão de total: período atual até agora, total desde o início e chamadas cobradas, sem depender do seletor.
+3. Tabela mensal com paginação: período atual mesmo vazio, do mais recente ao mais antigo, quantidade e preço da faixa por tipo, custo e linha de soma.
+4. Reaproveitar `centavosDaFaixa`/`precoUnitario` e a mesma contagem do custo por cliente; soma dos meses = total = "Desde o início".
+5. Explicações só no `<Explicacao>`, sem projeção nem limite do contrato.
+6. Testes e documentação.
+7. (QA, ciclo 1) No celular, a linha de soma mostrava "Preço consulta/emissão/declaração" sem valor.
+
+### Como cada uma foi resolvida
+
+1. e 2. `app/admin/custos/page.tsx`: cartão de linhas no estilo do `../fiscal` (período atual, desde o início, chamadas cobradas), independente de `?periodo=`.
+3. Tabela única com paginação; preço "—" quando o tipo não teve chamada; rodapé "Soma desde o início".
+4. `lib/serpro/custos.ts`: contagem do banco extraída para `gruposCobrados` (usada pelo custo por cliente e pelo mensal); novas `calcularCustosMensais` e `custosMensais(banco, agora)`, em centavos inteiros, Autenticar fora.
+5. Explicações no tooltip: preço da faixa, recusas podem não ser cobradas, período 21 a 20 em Brasília.
+6. `custos-mensais.test.ts` (troca de faixa, período vazio, fronteira 20/21, removidas e plataforma, 200 combinações aleatórias), `custos-acesso.test.ts` atualizado, `custos-mensais.qa.test.ts` (QA: limites de faixa, virada de ano, recusas, 15 períodos) e `docs/plataforma.md`.
+7. O rodapé recebe "—" em `preco-*`; teste exige nenhum `<dd>` vazio nos cartões do celular.
+
+### Ciclos desta rodada
+
+| Ciclo | Etapa | Resultado |
+|---|---|---|
+| 1 | Engenheiro | Custo total e custo mensal em `/admin/custos`, `gruposCobrados`, `custosMensais` |
+| 1 | QA | Reprovado (baixa): rótulos sem valor na soma no celular |
+| 2 | Engenheiro | "—" nos preços do rodapé e teste |
+| 2 | QA | Aprovado |
+| 2 | Tech lead | Aprovado |
+
+### Situação
+
+**Aprovada.** `npm test`: núcleo 376/376, plataforma 1376/1376; `typecheck` e `lint` sem erros. Na 3003, com os dados reais: período atual R$ 0,00, desde o início R$ 5,92 (22 × R$ 0,24 + 2 × R$ 0,32), 24 chamadas cobradas; nenhuma chamada nova em `serpro_chamadas` (28). Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.

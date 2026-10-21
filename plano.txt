@@ -40,7 +40,7 @@ PARTE 1 - NÚCLEO (SEM TELA)  [FEITO em 16/10/2026: núcleo completo; catálogo 
  6. Tabela de regras por CNAE de TI: anexo fixo, depende do Fator R, ou não atendido.
  7. Testes de tudo, usando os casos reais como referência (ex.: DAS de 09/2026 = R$ 1.000,76).
 
-PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: tela interna /admin/custos com custo por cliente e soma do período]
+PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: tela /admin/custos com custo por cliente, mensal e total]
  8. Site Next.js com banco Postgres e migrações.
  9. Login com Google e autorização, portados do projeto horizons (github.com/lucasjavit/horizons):
     - Google Identity Services (ID token) conferido no servidor com google-auth-library

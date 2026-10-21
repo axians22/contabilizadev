@@ -1,5 +1,5 @@
-// Custo por cliente das chamadas ao Serpro (tela interna /admin/custos, só ADMIN). Lê só serpro_chamadas e empresas: nunca
-// chama Serpro, BrasilAPI nem eSocial.
+// Custo por cliente, custo mensal e custo total das chamadas ao Serpro (tela interna /admin/custos, só ADMIN). Lê só
+// serpro_chamadas e empresas: nunca chama Serpro, BrasilAPI nem eSocial.
 //
 // Regra do preço (contrato, Anexo I): todas as chamadas de um tipo no período de cobrança (21 a 20, horário de Brasília)
 // pagam o preço da faixa em que caiu o TOTAL daquele tipo no período, somando todos os clientes. Por isso o custo de um
@@ -10,7 +10,7 @@
 // Arredondamento: os preços da tabela são centavos inteiros (R$ 0,24 = 24 centavos), então todo custo é calculado em
 // centavos inteiros (quantidade × preço em centavos), sem arredondar nada. A soma das linhas é exatamente o total; só a
 // tela converte para reais.
-import { and, asc, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, asc, gte, inArray, lt, ne, sql, type SQL } from "drizzle-orm";
 import { TIPO_DA_ACAO, type Acao } from "@contabilizadev/nucleo/serpro/cliente";
 import { ehChaveDePeriodo, limitesDoPeriodo, periodoDe, precoUnitario, type TipoRequisicao } from "@contabilizadev/nucleo/serpro/precos";
 import type { Banco } from "@/banco";
@@ -77,15 +77,8 @@ export const escolhaDoEndereco = (valor: unknown, agora = new Date()): Escolha =
 export type LinhaComNome = LinhaDeCusto & { nome: string; cnpj: string | null };
 export type CustosComNomes = { linhas: LinhaComNome[]; total: Custos["total"] };
 
-// O custo por cliente de um período (ou desde o início), com a razão social e o CNPJ de cada empresa.
-export async function custosPorCliente(banco: Banco, escolha: Escolha): Promise<CustosComNomes> {
-  const filtro =
-    escolha === DESDE_O_INICIO
-      ? cobrada
-      : (() => {
-          const { inicio, fim } = limitesDoPeriodo(escolha);
-          return and(cobrada, gte(serproChamadas.quando, inicio), lt(serproChamadas.quando, fim));
-        })();
+// As chamadas cobradas (filtro já com `cobrada`) contadas no banco por período, quem e tipo.
+async function gruposCobrados(banco: Banco, filtro: SQL | undefined): Promise<Grupo[]> {
   const contagem = await banco
     .select({
       periodo: periodoDaChamada,
@@ -98,14 +91,25 @@ export async function custosPorCliente(banco: Banco, escolha: Escolha): Promise<
     .where(filtro)
     .groupBy(periodoDaChamada, serproChamadas.empresaId, serproChamadas.semContribuinte, serproChamadas.acao);
 
-  const grupos: Grupo[] = contagem.flatMap((c) => {
+  return contagem.flatMap((c) => {
     const tipo = TIPO_DA_ACAO[c.acao as Acao];
     if (!tipo) return [];
     // Empresa cadastrada pelo vínculo; sem vínculo, a plataforma (sem contribuinte) ou uma empresa removida (anonimizada).
     const quem: Quem = c.empresaId ? { tipo: "empresa", empresaId: c.empresaId } : c.semContribuinte ? { tipo: "plataforma" } : { tipo: "removidas" };
     return [{ periodo: c.periodo, quem, tipo, quantidade: c.n }];
   });
-  const custos = calcularCustos(grupos);
+}
+
+// O custo por cliente de um período (ou desde o início), com a razão social e o CNPJ de cada empresa.
+export async function custosPorCliente(banco: Banco, escolha: Escolha): Promise<CustosComNomes> {
+  const filtro =
+    escolha === DESDE_O_INICIO
+      ? cobrada
+      : (() => {
+          const { inicio, fim } = limitesDoPeriodo(escolha);
+          return and(cobrada, gte(serproChamadas.quando, inicio), lt(serproChamadas.quando, fim));
+        })();
+  const custos = calcularCustos(await gruposCobrados(banco, filtro));
 
   const ids = custos.linhas.flatMap((l) => (l.quem.tipo === "empresa" ? [l.quem.empresaId] : []));
   const cadastro = ids.length
@@ -124,3 +128,43 @@ export async function custosPorCliente(banco: Banco, escolha: Escolha): Promise<
   };
 }
 
+// Custo mensal e total da plataforma: uma linha por período de cobrança, com a quantidade de cada tipo, o preço da faixa
+// aplicado (centavos, pelo total do tipo no período, como em calcularCustos) e o custo do período. Mesmos grupos que o custo
+// por cliente, então o custo de cada mês é a soma dos clientes nele e a soma dos meses é o "Desde o início".
+export type CustoDoPeriodo = { periodo: string; quantidades: Quantidades; precos: Record<TipoRequisicao, number>; centavos: number };
+export type CustosMensais = {
+  periodos: CustoDoPeriodo[]; // do mais recente para o mais antigo
+  atual: CustoDoPeriodo; // o período de agora (zerado se ainda não teve chamada cobrada)
+  total: { quantidades: Quantidades; chamadas: number; centavos: number };
+};
+
+const precosDe = (q: Quantidades) => Object.fromEntries(TIPOS.map((t) => [t, centavosDaFaixa(t, q[t])])) as Record<TipoRequisicao, number>;
+
+// O cálculo, sem banco: os períodos com chamadas cobradas e o atual (mesmo vazio).
+export function calcularCustosMensais(grupos: Grupo[], atual: string): CustosMensais {
+  const porPeriodo = new Map<string, Quantidades>([[atual, zerado()]]);
+  for (const g of grupos) {
+    if (g.quantidade <= 0) continue;
+    const q = porPeriodo.get(g.periodo) ?? zerado();
+    q[g.tipo] += g.quantidade;
+    porPeriodo.set(g.periodo, q);
+  }
+  const periodos = [...porPeriodo.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([periodo, quantidades]) => {
+      const precos = precosDe(quantidades);
+      return { periodo, quantidades, precos, centavos: TIPOS.reduce((s, t) => s + quantidades[t] * precos[t], 0) };
+    });
+  const total = { quantidades: zerado(), chamadas: 0, centavos: 0 };
+  for (const p of periodos) {
+    for (const t of TIPOS) total.quantidades[t] += p.quantidades[t];
+    total.centavos += p.centavos;
+  }
+  total.chamadas = TIPOS.reduce((s, t) => s + total.quantidades[t], 0);
+  return { periodos, atual: periodos.find((p) => p.periodo === atual)!, total };
+}
+
+// O custo mensal e o total desde a primeira chamada, lidos só do banco (independe do período escolhido na tela).
+export async function custosMensais(banco: Banco, agora = new Date()): Promise<CustosMensais> {
+  return calcularCustosMensais(await gruposCobrados(banco, cobrada), periodoDe(agora));
+}

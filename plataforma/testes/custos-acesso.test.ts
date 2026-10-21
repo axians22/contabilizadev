@@ -105,6 +105,24 @@ describe("/admin/custos: só o ADMIN, conferido no servidor", async () => {
     const inicio = renderToStaticMarkup(await Custos(props("inicio")));
     assert.match(inicio, /Soma desde o início/);
     assert.match(inicio, /R\$\s0,56/);
+    // Custo total e custo mensal abaixo da tabela por cliente, com o preço da faixa e a soma desde o início.
+    assert.ok(html.indexOf("Custo por cliente") < html.indexOf("Custo total"));
+    assert.ok(html.indexOf("Custo total") < html.indexOf("Custo mensal"));
+    assert.match(html, /Período atual \(/);
+    assert.match(html, /Chamadas cobradas desde o início/);
+    assert.match(html, /Soma desde o início/);
+    assert.match(html, /\(atual\)/);
+    assert.match(html, /R\$\s0,24/);
+    assert.match(html, /R\$\s0,32/);
+    // No celular (cartões), nenhum rótulo fica sem valor: a soma mostra "—" nos preços, como as linhas sem chamada.
+    const cartoes = /<ul[^>]*aria-label="Custo mensal"[^>]*>([\s\S]*?)<\/ul>/.exec(html)?.[1];
+    assert.ok(cartoes, "cartões do celular da tabela Custo mensal");
+    assert.match(cartoes, /Soma desde o início/);
+    assert.doesNotMatch(cartoes, /<dd[^>]*><\/dd>/);
+    // O total não depende do período escolhido na tabela por cliente.
+    const antigo = renderToStaticMarkup(await Custos(props("2001-01-21")));
+    const totalDe = (h: string) => h.slice(h.indexOf("Custo total"));
+    assert.equal(totalDe(antigo), totalDe(html));
     // Período sem chamadas (nem o atual) ou inválido: mostra o atual, não um erro.
     for (const p of ["2001-01-21", "2026-10-20", "lixo"]) assert.match(renderToStaticMarkup(await Custos(props(p))), /R\$\s0,56/, p);
   });

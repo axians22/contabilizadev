@@ -60,7 +60,16 @@
   - arredondamento: os preços da tabela são centavos inteiros, então o custo é calculado em centavos inteiros
     (quantidade × preço em centavos), sem arredondar; a soma das linhas é exatamente o total (linha de soma ao pé da
     tabela, pelo `rodape` de `app/tabela.tsx`). Recusas podem não ser cobradas pelo Serpro (dito no tooltip).
-  O custo total da plataforma (projeção, limite do contrato) fica para uma tarefa seguinte.
+  Abaixo da tabela por cliente, sem depender do seletor (`custosMensais` e `calcularCustosMensais`, mesmos grupos
+  de chamadas cobradas):
+  - **Custo total**: cartão de linhas (como no `../fiscal/app/config/serpro/page.tsx`) com o custo do período atual
+    até agora, o custo desde a primeira chamada e a quantidade de chamadas cobradas;
+  - **Custo mensal**: tabela com paginação, uma linha por período de cobrança com chamadas cobradas mais o período
+    atual (mesmo vazio), do mais recente ao mais antigo, com a quantidade e o preço da faixa (`centavosDaFaixa` pelo
+    total do tipo no período) de Consulta, Emissão e Declaração, e o custo do período; linha de soma ao pé. Período só
+    com "Autenticar" não vira linha. A soma dos meses é o total e o "Desde o início" por cliente; cada mês é a soma
+    dos clientes no período (testes em `testes/custos-mensais.test.ts`). Empresas removidas e a plataforma entram.
+  Sem projeção, limite do contrato nem custos que não sejam do Serpro.
 - `app/api/sessao` — quem está logado e a empresa ativa (401 sem sessão).
 - `app/ui.tsx`, `app/tabela.tsx`, `app/barra-lateral.tsx`, `app/graficos.tsx` (barras com Chart.js, carregado sob
   demanda) e o tema em `app/globals.css` — a parte visual reaproveitada do `../fiscal`.
