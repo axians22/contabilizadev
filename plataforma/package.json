@@ -1,0 +1,41 @@
+{
+  "name": "plataforma",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --import tsx --test --test-concurrency=1 \"lib/**/*.test.ts\" \"banco/**/*.test.ts\" \"testes/**/*.test.ts\"",
+    "banco:gerar": "drizzle-kit generate",
+    "banco:migrar": "drizzle-kit migrate",
+    "banco:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@contabilizadev/nucleo": "*",
+    "chart.js": "4.5.1",
+    "drizzle-orm": "0.45.3",
+    "google-auth-library": "11.1.0",
+    "next": "16.4.0",
+    "postgres": "3.4.9",
+    "react": "19.3.0",
+    "react-chartjs-2": "5.3.1",
+    "react-dom": "19.3.0",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "fake-indexeddb": "6.2.5",
+    "tailwindcss": "^4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "^5"
+  }
+}

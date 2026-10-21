@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f3;
+  --surface: #ffffff;
+  --raised: #eef0e9;
+  --fg: #0e1409;
+  --muted: #667062;
+  --line: #e1e5da;
+  --accent: #9fe870;
+  --accent-ink: #2c6a05;
+  --on-accent: #12290a;
+  --warn: #8a5a00;
+  --warn-soft: #fdf3d7;
+  --bad: #c2362b;
+  --glow: rgb(159 232 112 / 0.35);
+  /* Séries dos gráficos (validadas para daltonismo e contraste). */
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #090b08;
+    --surface: #11140f;
+    --raised: #1a1e17;
+    --fg: #f1f4ec;
+    --muted: #8d9787;
+    --line: #232920;
+    --accent-ink: #9fe870;
+    --warn: #f2c14e;
+    --warn-soft: #2a2210;
+    --bad: #ff7a6e;
+    --glow: rgb(159 232 112 / 0.12);
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+    --serie-3: #199e70;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-serie-1: var(--serie-1);
+  --color-serie-2: var(--serie-2);
+  --color-serie-3: var(--serie-3);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-hero: #12290a;
+  --color-hero-deep: #071203;
+  --color-hero-vencido: #3a0b0b;
+  --color-hero-vencido-deep: #140303;
+}
+
+body {
+  background:
+    radial-gradient(60rem 28rem at 50% -12rem, var(--glow), transparent 70%),
+    var(--bg);
+  background-repeat: no-repeat;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+input[type="number"] {
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* Balão das explicações (app/explicacao.tsx): só esmaece, sem movimento (o posicionamento mede o balão ao abrir). */
+@keyframes explicacao-aparece {
+  from {
+    opacity: 0;
+  }
+}

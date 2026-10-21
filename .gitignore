@@ -1,0 +1,21 @@
+# dependências
+node_modules/
+
+# next.js
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# segredos e dados locais (nunca no git)
+.env*
+!.env.exemplo
+*.pfx
+*.p12
+*.pem
+dados/
+
+# sistema
+.DS_Store
+npm-debug.log*

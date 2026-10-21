@@ -1,0 +1,1 @@
+ALTER TABLE "autorizacoes_recebidas" ADD COLUMN "nao_apareceu_em" timestamp with time zone;

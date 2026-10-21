@@ -1,0 +1,111 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792163231689,
+      "tag": "0000_inicial",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792188634462,
+      "tag": "0001_usuarios_empresas_sessoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792196229613,
+      "tag": "0002_consultas_cnpj",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792265517493,
+      "tag": "0003_procuracoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792291551249,
+      "tag": "0004_autorizacoes_recebidas",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792293034202,
+      "tag": "0005_aceite_nao_apareceu",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792337600553,
+      "tag": "0006_termo_autorizacao",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792349347913,
+      "tag": "0007_serpro_chamadas_empresa",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792370866482,
+      "tag": "0008_historico",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792373156545,
+      "tag": "0009_extrato_da_declaracao",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792435680223,
+      "tag": "0010_rotina_do_mes",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792438170033,
+      "tag": "0011_meses_sem_receita",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792453364881,
+      "tag": "0012_esocial",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792498861624,
+      "tag": "0013_parte8_caixa_postal_defis",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792508591306,
+      "tag": "0014_plataforma_segredos",
+      "breakpoints": true
+    }
+  ]
+}

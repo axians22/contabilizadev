@@ -1,0 +1,157 @@
+CONTABILIZADEV - PLANO DE CONSTRUÇÃO
+====================================
+
+Objetivo: plataforma self-service para empresas de TI do Simples Nacional que exportam serviço.
+O cliente faz as próprias declarações; a plataforma é a ferramenta.
+
+Modelo:
+- Contrato com o Serpro (Integra Contador) é da plataforma (contratante).
+- Cada cliente assina, no navegador, o termo de autorização do Serpro (Autentica Procurador) com o certificado
+  e-CNPJ A1 (.pfx) da própria empresa; o arquivo, a chave e a senha não saem do computador dele. A plataforma
+  guarda o termo assinado e o token, cifrados, e reenvia o termo para renovar o token (vale até a meia-noite do
+  dia seguinte) enquanto o termo estiver na vigência. Requisitos do cliente: e-CNPJ A1 e conta gov.br prata ou
+  ouro; quem não tiver é orientado a conseguir. Assinar o termo é dar a "autorização".
+- Sem o termo, o cliente usa o modo guiado: a plataforma calcula e mostra o que lançar; o cliente
+  transmite no Portal do Simples.
+- eSocial: o cliente assina os eventos no navegador e a plataforma transmite com o próprio certificado.
+  Alternativa: o cliente lança o pró-labore no portal do eSocial com os valores prontos.
+- O cliente nunca vê o nome Serpro (nem Integra Contador, nomes de serviços ou mensagens cruas da API):
+  na tela a fonte é sempre "Receita Federal". O Serpro é detalhe interno. Única exceção: o texto oficial do
+  termo de autorização, mostrado por inteiro antes da assinatura (o cliente precisa ler o que assina).
+- Acesso em camadas: quem entra vê o site e todas as abas da barra lateral, mas o conteúdo de cada aba só
+  aparece com uma empresa cadastrada (antes disso, cada aba explica o que vai ter e leva ao cadastro) e,
+  depois da Parte 9 (cobrança), com um plano ativo (sem plano, a aba explica e leva à escolha do plano).
+- Toda transmissão exige a confirmação do cliente. Sem orientação personalizada.
+- O site atual (../fiscal) não é alterado até o fim; ele é a referência para comparar os resultados.
+
+
+PARTE 0 - PREPARAÇÃO  [FEITO em 16/10/2026: npm workspaces, nucleo/ e plataforma/ na porta 3001]
+ 1. Projeto nesta pasta, com git desde o começo.
+ 2. Estrutura em duas partes:
+    - nucleo/      regras fiscais e integrações (sem tela, sem nada fixo de empresa)
+    - plataforma/  o site novo
+
+PARTE 1 - NÚCLEO (SEM TELA)  [FEITO em 16/10/2026: núcleo completo; catálogo Serpro, lint, feriados e ajustes do tech lead]
+ 3. Copiar do site atual o que já funciona: cliente do Serpro, assinatura XML, cálculo do Simples,
+    PGDAS-D, DCTFWeb, guias (inclusive vencida com multa e juros), situação fiscal, Caixa Postal,
+    DEFIS, eSocial, leitores de PDF e Excel.
+ 4. Tirar tudo o que é fixo (CNPJ, atividade 30, categoria 723); cada função recebe os dados da empresa.
+ 5. Acrescentar o Anexo V, a repartição por faixa e o Fator R.
+ 6. Tabela de regras por CNAE de TI: anexo fixo, depende do Fator R, ou não atendido.
+ 7. Testes de tudo, usando os casos reais como referência (ex.: DAS de 09/2026 = R$ 1.000,76).
+
+PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: área do administrador separada em /admin, com acesso conferido no servidor]
+ 8. Site Next.js com banco Postgres e migrações.
+ 9. Login com Google e autorização, portados do projeto horizons (github.com/lucasjavit/horizons):
+    - Google Identity Services (ID token) conferido no servidor com google-auth-library
+      (audience = GOOGLE_CLIENT_ID e email_verified obrigatório); referência: backend/src/auth/
+      (auth.service.ts, auth.guard.ts, current-user.ts) e frontend/src/components/BotaoGoogle.tsx.
+    - Papéis COMMON_USER, MANAGER e ADMIN na tabela de usuários; ADMIN só pela lista ADMIN_EMAILS.
+    - Usuário recarregado do banco a cada requisição (desativou ou mudou de papel, vale na hora); tudo
+      fechado por padrão, só rotas marcadas como públicas ficam abertas.
+    - Adaptação: sessão em cookie httpOnly (não em localStorage) e verificação no servidor do Next
+      (layouts, route handlers e server actions). "Login desligado" só em desenvolvimento.
+10. Usuários e empresas: cada dado preso à sua empresa (um cliente nunca vê o dado de outro).
+11. Reaproveitar a parte visual: barra lateral, barra de cima, tabela, gráficos e tema.
+
+PARTE 3 - CADASTRO E DIAGNÓSTICO  [FEITO em 18/10/2026: assistente com passo 7 Autorização; nome Autorização e redirect /autorizacao]
+12. Cliente digita o CNPJ; o site preenche pela BrasilAPI (razão social, CNAEs, Simples, sócios).
+13. Diagnóstico: anexo, se depende do Fator R, ou "ainda não atendemos".
+
+PARTE 4 - AUTORIZAÇÃO (TERMO DE AUTORIZAÇÃO)  [FEITO em 20/10/2026: botões Ver guia e Baixar em painel, Guias, Histórico e rotina]
+14. Montar o termo de autorização oficial; o cliente confere os requisitos (e-CNPJ A1 e gov.br prata ou ouro,
+    com orientação para quem não tem) e assina no navegador (a chave não sai do computador dele).
+15. Enviar ao Serpro (AUTENTICAPROCURADOR / ENVIOXMLASSINADO81), guardar o termo assinado e o token, ambos
+    cifrados, renovar o token sozinho e avisar quando o termo for vencer.
+16. Modo guiado para quem ainda não assinou: o que depende da Receita mostra o caminho no portal.
+    Testar com a própria empresa como cliente 1.
+
+PARTE 5 - IMPORTAR O HISTÓRICO  [FEITO em 18/10/2026: histórico da Receita importado, conferência CNAE, situação fiscal e DEFIS]
+17. Extratos do PGDAS-D dos últimos 12 meses, pagamentos (PAGTOWEB), DEFIS e situação fiscal.
+    Conferir automaticamente o CNAE com o anexo declarado e avisar se não bater.
+
+PARTE 6 - ROTINA DO MÊS  [FEITO em 19/10/2026: rotina mensal; assinatura no navegador com opção de guardar certificado]
+18. Lançar a receita, calcular (Anexo III ou V, com Fator R), simular, confirmar, transmitir
+    PGDAS-D e DCTFWeb, gerar as guias (inclusive guia vencida).
+19. Aviso de Fator R perto de 28%, com a sugestão de pró-labore e a economia.
+
+PARTE 7 - ESOCIAL  [FEITO em 19/10/2026: pró-labore no eSocial com fechamento que transmite a DCTFWeb]
+20. Pró-labore: o cliente assina os eventos no navegador (assinador da Parte 6: "usar só agora" ou "guardar
+    neste navegador") e a plataforma transmite com o próprio certificado (o eSocial não exige vínculo entre o
+    transmissor e o empregador; a chave do cliente nunca vai para o servidor).
+21. Alternativa pelo portal do eSocial, com os valores prontos.
+
+PARTE 8 - RESTO DO PAINEL  [FEITO em 20/10/2026: barra lateral em grupos, eSocial só configuração, lançar como fiscal]
+22. Caixa Postal, situação fiscal, DEFIS anual e avisos.
+
+PARTE 9 - PRODUÇÃO
+23. Hospedagem, domínio, HTTPS, backups, criptografia, registros e monitoramento.
+24. Termos de uso, LGPD e cobrança da assinatura (liga a exigência de plano ativo no acesso em camadas).
+    Cobrança: plano mensal ou anual por empresa, pago pelo usuário (quem cadastrou). Nada é cobrado por
+    chamada à Receita/Serpro; o custo das chamadas é da plataforma e só entra na conta do preço do plano.
+
+PARTE 10 - TESTE REAL
+25. Usar com 3 a 5 clientes e comparar com o site atual durante alguns meses.
+
+
+PRIMEIRA VERSÃO (MVP) ATENDE SÓ
+- Empresas de TI do Simples (CNAEs 6201, 6202, 6203, 6204, 6209, 6311, 6319).
+- Só receita de exportação.
+- Uma atividade por empresa.
+
+
+DECISÕES TOMADAS
+- Banco: Postgres 17 (Docker no desenvolvimento, porta 5433), Drizzle ORM + postgres.js, migrações com drizzle-kit.
+  No ar desde 16/10/2026. Docker em docker/: só o banco (npm run banco:subir) ou tudo, banco + plataforma
+  na porta 3002 (npm run docker:subir).
+
+- Login: Google, com autenticação e autorização portadas do horizons (ver Parte 2, passo 9).
+
+- Procuração no e-CAC em vez de termo de autorização (17/10/2026): o termo do Autentica Procurador foi
+  feito para escritório → software e obrigaria a guardar o termo assinado (o token vale só até a meia-noite
+  do dia seguinte). Com a procuração ao CNPJ da plataforma, como fazem as contabilidades online, o cliente faz
+  um passo só, uma vez, e a plataforma não guarda nada dele. Quem não quiser dar procuração usa o modo guiado.
+
+- Autorização de acesso e aceite pela plataforma (17/10/2026): a procuração eletrônica do e-CAC virou "Autorização de
+  Acesso" (Portal de Serviços; IN RFB 2.320/2026). O fluxo atual é: e-CAC com o perfil da empresa (Alterar perfil de
+  acesso → Responsável legal do CNPJ, ou e-CNPJ) → aba "Autorizações de Acesso (Procurações)" → "Minhas Autorizações de
+  Acesso" → "+ Nova Autorização" → Pessoa → Serviços (sem "Todos") → Assinatura. Descoberta: assinada, a autorização fica
+  "Em Análise · Pela Pessoa Autorizada" até a plataforma aceitar em "Recebidas", em até 30 dias, ou a Receita a cancela
+  (art. 7º, § 2º). Não existe API para aceitar (o Integra Procurações só tem OBTERPROCURACAO41) e o art. 13 veda robôs,
+  scripts e automação de navegador nessa tela. Decisão: aceite manual com fila. O cliente clica "Já assinei" e vê
+  "Aguardando a plataforma aceitar"; a área interna ganha "Autorizações para aceitar" (/aceites) e o sino avisa; o
+  administrador aceita no e-CAC e marca "Já aceitei"; quem confirma que ligou continua sendo a conferência
+  (OBTERPROCURACAO41, banco primeiro), que reconfere na hora depois do "Já aceitei" e a cada 24 h enquanto espera.
+  O prazo de 30 dias é para aceitar: um "Já aceitei" marcado no prazo não expira depois dele (continua conferindo).
+  Se a conferência depois do "Já aceitei" ainda não mostra a autorização ativa, o aviso volta ao sino ("Aceite não
+  apareceu na Receita") e a fila oferece "Aceitei de novo"; "Desfazer" corrige um "Já aceitei" marcado por engano,
+  só até o último dia do prazo (depois dele, desfazer faria o aviso expirar em vez de voltar à fila; o aceite marcado
+  no prazo continua e a conferência decide).
+  Só expira o aviso sem aceite no prazo, ou cujo aceite não apareceu e o prazo passou (o cliente assina de novo).
+  Serviços conferidos com a tabela oficial "Serviços x Procuração" e o modal do e-CAC: nenhum código mudou; o
+  parcelamento (00076 e 00188) continua opcional.
+
+- Volta ao termo de autorização (18/10/2026): a autorização no e-CAC exige o aceite manual da plataforma em cada
+  cliente (sem API, e a IN RFB 2.320/2026 restringe automação nessa tela). O usuário escolheu o termo assinado com
+  o e-CNPJ do cliente, que liga na hora e sem trabalho manual. Exige e-CNPJ A1 e gov.br prata ou ouro do cliente;
+  sem isso, modo guiado. O texto oficial do termo cita a API do Serpro: é a única exceção à regra de não mostrar o
+  fornecedor. As decisões anteriores sobre procuração/autorização no e-CAC ficam como histórico.
+- Certificado do cliente para assinar (19/10/2026): a DCTFWeb (e o eSocial, Parte 7) exige a assinatura do próprio
+  cliente, e o termo de autorização não substitui isso. O cliente escolhe, em cada assinatura: "Usar só agora"
+  (informa o .pfx e a senha na hora, nada fica guardado) ou "Guardar neste navegador" (a chave privada vai para o
+  cofre do navegador como chave não exportável — WebCrypto + IndexedDB — e nas próximas vezes basta clicar em
+  Assinar). Nunca guardamos o certificado no servidor nem a senha em lugar nenhum.
+- Barra lateral (20/10/2026): grupo "Empresa" com as abas do dia a dia (Painel do mês, Roteiro, Guias, Histórico,
+  Situação fiscal, Declaração anual); grupo "Configuração" no fim (Dados da empresa, Autorização, eSocial — só a
+  configuração; o envio mensal do eSocial fica no Roteiro). Toda configuração nova entra no grupo "Configuração".
+  Avisos e Mensagens saíram da barra: viraram a página "Avisos e mensagens" (/avisos, com as duas abas), aberta pelo sino.
+  O grupo "Plataforma" saiu (21/10/2026) e virou a área do administrador (/admin, app/admin, lista em lib/admin.ts):
+  layout e barra lateral próprios ("Administração", com uma faixa de cor, sem seletor de empresa, sino nem abas de
+  empresa, e "Voltar para a aplicação"), aberta pelo item "Área do administrador" do menu do usuário, que só aparece
+  para quem tem acesso. Fechada por padrão no servidor (a entrada no layout, exigirAreaDoAdmin em cada página e ação):
+  COMMON_USER recebe 404; MANAGER vê só Usuários (com as regras de quem altera quem: o menu o leva direto para
+  /admin/usuarios, e /admin o redireciona para lá); ADMIN vê tudo (Visão geral,
+  Usuários, Certificado da plataforma com a situação da integração, Plano do projeto). /usuarios, /config/plataforma e
+  /plano redirecionam (308) para /admin/usuarios, /admin/plataforma e /admin/plano. Os avisos do ADMIN (certificado da
+  plataforma) levam para /admin/plataforma e só aparecem para o ADMIN. Tudo o que for só de administrador vai para a
+  área /admin, nunca para a aplicação comum.

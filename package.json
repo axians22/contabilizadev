@@ -1,0 +1,22 @@
+{
+  "name": "contabilizadev",
+  "private": true,
+  "workspaces": [
+    "nucleo",
+    "plataforma"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w plataforma",
+    "build": "npm run build -w plataforma",
+    "test": "npm test -w nucleo && npm test -w plataforma",
+    "lint": "npm run lint -w nucleo && npm run lint -w plataforma",
+    "typecheck": "npm run typecheck -w nucleo && npm run typecheck -w plataforma",
+    "banco:subir": "docker compose -f docker/docker-compose.yml up -d banco",
+    "banco:parar": "docker compose -f docker/docker-compose.yml stop banco",
+    "banco:gerar": "npm run banco:gerar -w plataforma",
+    "banco:migrar": "npm run banco:migrar -w plataforma",
+    "docker:subir": "docker compose -f docker/docker-compose.yml --env-file plataforma/.env.local --profile completo up -d --build",
+    "docker:parar": "docker compose -f docker/docker-compose.yml --env-file plataforma/.env.local --profile completo stop",
+    "docker:logs": "docker compose -f docker/docker-compose.yml --env-file plataforma/.env.local --profile completo logs -f plataforma"
+  }
+}
