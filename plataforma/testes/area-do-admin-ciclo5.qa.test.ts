@@ -80,9 +80,9 @@ describe("QA ciclo 5: a barreira de /admin no servidor, com sessão real no banc
   it("exigirAreaDoAdmin em cada endereço: a tabela papel × página", async () => {
     const { exigirAreaDoAdmin } = await import("@/lib/autenticacao/servidor");
     const esperado = {
-      COMMON_USER: { "/admin": "404", "/admin/usuarios": "404", "/admin/plataforma": "404", "/admin/plano": "404" },
-      MANAGER: { "/admin": "redirect /admin/usuarios", "/admin/usuarios": "ok", "/admin/plataforma": "404", "/admin/plano": "404" },
-      ADMIN: { "/admin": "ok", "/admin/usuarios": "ok", "/admin/plataforma": "ok", "/admin/plano": "ok" },
+      COMMON_USER: { "/admin": "404", "/admin/usuarios": "404", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/plano": "404" },
+      MANAGER: { "/admin": "redirect /admin/usuarios", "/admin/usuarios": "ok", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/plano": "404" },
+      ADMIN: { "/admin": "ok", "/admin/usuarios": "ok", "/admin/plataforma": "ok", "/admin/custos": "ok", "/admin/plano": "ok" },
     } as const;
     for (const [papel, paginas] of Object.entries(esperado))
       for (const [href, r] of Object.entries(paginas)) {

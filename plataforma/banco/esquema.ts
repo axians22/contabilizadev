@@ -179,6 +179,9 @@ export const serproChamadas = pgTable(
     // só como número de gasto, ANONIMIZADA: empresa_id e contribuinte nulos e mensagens vazias; ficam data, ação (tipo),
     // serviço, finalidade (texto do código; o CNPJ, se aparecer, é tirado), status e custo.
     empresaId: uuid("empresa_id").references(() => empresas.id, { onDelete: "set null" }),
+    // A chamada não tinha contribuinte (é da própria plataforma, como a autenticação). Separa, no custo por cliente
+    // (/admin/custos), o gasto da plataforma do das empresas removidas, que também ficam sem empresa_id e sem contribuinte.
+    semContribuinte: boolean("sem_contribuinte").notNull().default(false),
     status: smallint("status"),
     mensagens: text("mensagens").notNull(),
     custo: numeric("custo", { precision: 10, scale: 2, mode: "number" }).notNull(),

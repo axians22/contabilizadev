@@ -51,6 +51,7 @@ const ICONES_DO_ADMIN: Record<HrefDoAdmin, ReactNode> = {
   "/admin": icone(<path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />),
   "/admin/usuarios": icone(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6" /></>),
   "/admin/plataforma": icone(<><circle cx="12" cy="9" r="5" /><path d="m9 13.5-1.5 7.5 4.5-2.5 4.5 2.5-1.5-7.5" /></>),
+  "/admin/custos": icone(<><circle cx="12" cy="12" r="9" /><path d="M14.5 9.5c-.4-.9-1.4-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1.1 0-2.1-.6-2.5-1.5M12 6.5V8M12 16v1.5" /></>),
   "/admin/plano": icone(<><path d="M9 4h6v3H9z" /><path d="M15 5h3v16H6V5h3" /><path d="M9 12h6M9 16h4" /></>),
 };
 

@@ -38,6 +38,7 @@ const EXCECOES: Record<string, string> = {
   "app/admin/plano/page.tsx": "plano do projeto, na área do administrador: só ADMIN (exigirAreaDoAdmin), nem MANAGER nem o login desligado",
   // Só a página: as ações e os formulários dela continuam conferidos (não citam o fornecedor).
   "app/admin/plataforma/page.tsx": "certificado e chaves do contrato da plataforma, na área do administrador: só ADMIN (exigirAreaDoAdmin), nem MANAGER nem o login desligado",
+  "app/admin/custos/page.tsx": "custo por cliente das chamadas ao contrato da plataforma, na área do administrador: só ADMIN (exigirAreaDoAdmin), nem MANAGER nem o login desligado",
 };
 
 // Módulos de lib/ cujo texto vai para a tela (mensagens, avisos, modo guiado, erros de ação).

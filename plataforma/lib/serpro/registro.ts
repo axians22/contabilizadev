@@ -26,6 +26,7 @@ export function registroNoBanco(banco: Banco): RegistroSerpro {
           finalidade: semCnpj(c.finalidade),
           contribuinte: daEmpresa(empresas.cnpj),
           empresaId: daEmpresa(empresas.id),
+          semContribuinte: !cnpj,
           status: c.status,
           mensagens: cnpj ? sql<string>`case when ${cadastrada} then ${c.mensagens} else '' end` : c.mensagens,
           custo: c.custo,

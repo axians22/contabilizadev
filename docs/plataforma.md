@@ -11,8 +11,8 @@
   `lib/admin.ts`; o layout confere a entrada (`exigirEntradaNaAreaDoAdmin`: COMMON_USER recebe 404) e cada página e
   cada ação começam por `exigirAreaDoAdmin(endereço)`. Visão geral (`/admin`, só ADMIN: os avisos da plataforma, o banco
   de dados e os atalhos; o MANAGER que abre `/admin` vai para `/admin/usuarios`), Usuários (`/admin/usuarios`, a única
-  página do MANAGER; ADMIN também), Certificado da plataforma (`/admin/plataforma`, só ADMIN) e Plano do projeto
-  (`/admin/plano`, só ADMIN). Os endereços antigos (`/usuarios`, `/config/plataforma`, `/plano`) redirecionam (308).
+  página do MANAGER; ADMIN também), Certificado da plataforma (`/admin/plataforma`, só ADMIN), Custos (`/admin/custos`,
+  só ADMIN) e Plano do projeto (`/admin/plano`, só ADMIN). Os endereços antigos (`/usuarios`, `/config/plataforma`, `/plano`) redirecionam (308).
 - `app/explicacao.tsx` — o tooltip único da aplicação (`<Explicacao>` e `<ExplicacaoDoTermo>`): toda explicação vai
   nele (ⓘ discreto ou o próprio termo sublinhado), nunca num parágrafo aberto. Abre ao passar o mouse, ao focar com Tab
   e ao tocar; fecha com Esc, clique fora ou Tab. Regras de abrir/fechar e de posição em `lib/explicacao.ts`.
@@ -41,6 +41,26 @@
   (`exigirAreaDoAdmin("/admin/plataforma")`: MANAGER, COMMON_USER e o login desligado sem ser ADMIN recebem 404; o serviço
   confere de novo e recusa com 403). Mostra também a situação da integração (Receita Federal, eSocial e a assinatura do
   termo de autorização, com o motivo técnico). Veja "Certificado da plataforma" abaixo.
+- `app/admin/custos/` — **Custos**, na área do administrador, só ADMIN (`exigirAreaDoAdmin("/admin/custos")`; MANAGER e
+  COMMON_USER recebem 404): o **custo por cliente** das chamadas ao Serpro, lido só de `serpro_chamadas` (a tela nunca
+  chama Serpro, BrasilAPI nem eSocial). Cálculo em `lib/serpro/custos.ts`:
+  - período de cobrança do Serpro, do dia 21 às 00:00 ao dia 21 seguinte às 00:00 no horário de Brasília
+    (`periodoDe`, `limitesDoPeriodo` e `inicioDoPeriodo` em `nucleo/src/serpro/precos.ts`, iguais em qualquer fuso do
+    servidor). O seletor (formulário GET, `?periodo=AAAA-MM-21` ou `?periodo=inicio`) lista o período atual e os
+    anteriores que tiveram chamadas, mais "Desde o início"; valor inválido ou período sem chamadas abre o atual;
+  - uma linha por empresa (razão social e CNPJ), com as chamadas cobradas por tipo (Consulta, Emissão, Declaração, pelo
+    `TIPO_DA_ACAO`; "Autenticar" não é cobrada e não entra) e o custo; as chamadas anonimizadas de empresas removidas
+    (sem `empresa_id` e sem contribuinte) ficam juntas em "Empresas removidas"; as feitas sem contribuinte
+    (`sem_contribuinte`, gravado pelo registro) em "Plataforma (sem empresa)". A empresa da plataforma é uma linha
+    como as outras. Do maior custo para o menor (empate: mais chamadas, depois uma ordem fixa);
+  - o preço é o da faixa em que caiu o **total do tipo no período** (todos os clientes somados), como o Serpro cobra:
+    custo do cliente = Σ por tipo de quantidade × `precoUnitario(tipo, total do tipo)`. A soma das linhas é o
+    `custoMensal` do período. "Desde o início" calcula período a período (cada um na sua faixa) e soma. A coluna
+    `custo` gravada na hora da chamada (que ainda não sabia o total do mês) não entra;
+  - arredondamento: os preços da tabela são centavos inteiros, então o custo é calculado em centavos inteiros
+    (quantidade × preço em centavos), sem arredondar; a soma das linhas é exatamente o total (linha de soma ao pé da
+    tabela, pelo `rodape` de `app/tabela.tsx`). Recusas podem não ser cobradas pelo Serpro (dito no tooltip).
+  O custo total da plataforma (projeção, limite do contrato) fica para uma tarefa seguinte.
 - `app/api/sessao` — quem está logado e a empresa ativa (401 sem sessão).
 - `app/ui.tsx`, `app/tabela.tsx`, `app/barra-lateral.tsx`, `app/graficos.tsx` (barras com Chart.js, carregado sob
   demanda) e o tema em `app/globals.css` — a parte visual reaproveitada do `../fiscal`.

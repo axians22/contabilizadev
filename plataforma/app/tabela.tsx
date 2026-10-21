@@ -51,6 +51,7 @@ export function Tabela({
   semCartao = false,
   densa = false,
   paginaInicial,
+  rodape,
 }: {
   colunas: Coluna[];
   linhas: Linha[];
@@ -64,6 +65,8 @@ export function Tabela({
   densa?: boolean;
   // Página que abre primeiro (ex.: a que contém a linha em destaque). Sem ela, a página 1.
   paginaInicial?: number;
+  // Linha fixa ao pé (ex.: a soma), igual em todas as páginas da paginação; as células seguem as chaves das colunas.
+  rodape?: Record<string, ReactNode>;
 }) {
   const [escolhida, setPagina] = useState(() => Math.max(1, paginaInicial ?? 1));
   const paginas = Math.max(1, Math.ceil(linhas.length / porPagina));
@@ -109,6 +112,17 @@ export function Tabela({
               </tr>
             ))}
           </tbody>
+          {rodape && (
+            <tfoot>
+              <tr className="font-semibold">
+                {colunas.map((c) => (
+                  <td key={c.chave} className={`border-t-2 border-line ${densa ? "py-2" : "py-2.5"} ${celula} ${ALINHAR[c.alinhar ?? "esquerda"]} ${c.classe ?? ""}`}>
+                    {rodape[c.chave] ?? ""}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
@@ -129,6 +143,21 @@ export function Tabela({
             )}
           </li>
         ))}
+        {rodape && (
+          <li className="flex flex-col gap-1.5 border-t-2 border-line px-4 py-3 text-sm font-semibold">
+            <div className="min-w-0">{rodape[principal.chave]}</div>
+            {outras.length > 0 && (
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
+                {outras.map((c) => (
+                  <div key={c.chave} className="contents">
+                    <dt className="text-xs font-normal text-muted">{c.titulo}</dt>
+                    <dd className="min-w-0 text-right break-words tabular-nums">{rodape[c.chave] ?? ""}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </li>
+        )}
       </ul>
 
       {paginas > 1 && (

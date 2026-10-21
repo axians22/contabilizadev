@@ -58,6 +58,7 @@ describe("área do administrador: cada rota confere no servidor", () => {
     assert.deepEqual(veem("/admin/usuarios"), ["MANAGER", "ADMIN"]);
     assert.deepEqual(veem("/admin/plataforma"), ["ADMIN"]);
     assert.deepEqual(veem("/admin/plano"), ["ADMIN"]);
+    assert.deepEqual(veem("/admin/custos"), ["ADMIN"]);
     for (const f of paginas) assert.equal(podeVerNoAdmin("COMMON_USER", enderecoDe(f)), false, enderecoDe(f));
   });
 

@@ -40,7 +40,7 @@ PARTE 1 - NÚCLEO (SEM TELA)  [FEITO em 16/10/2026: núcleo completo; catálogo 
  6. Tabela de regras por CNAE de TI: anexo fixo, depende do Fator R, ou não atendido.
  7. Testes de tudo, usando os casos reais como referência (ex.: DAS de 09/2026 = R$ 1.000,76).
 
-PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: área do administrador separada em /admin, com acesso conferido no servidor]
+PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: tela interna /admin/custos com custo por cliente e soma do período]
  8. Site Next.js com banco Postgres e migrações.
  9. Login com Google e autorização, portados do projeto horizons (github.com/lucasjavit/horizons):
     - Google Identity Services (ID token) conferido no servidor com google-auth-library
@@ -98,6 +98,12 @@ PRIMEIRA VERSÃO (MVP) ATENDE SÓ
 - Empresas de TI do Simples (CNAEs 6201, 6202, 6203, 6204, 6209, 6311, 6319).
 - Só receita de exportação.
 - Uma atividade por empresa.
+- Público: desenvolvedores que trabalham como PJ e controlam a própria empresa (uma pessoa por empresa).
+
+
+BACKLOG (fora do plano por enquanto)
+- Convite de membro para uma empresa (21/10/2026): o banco já tem o papel MEMBRO em empresa_usuarios, mas não
+  há tela. Fica para depois porque o público é o dev PJ que usa a própria empresa sozinho.
 
 
 DECISÕES TOMADAS

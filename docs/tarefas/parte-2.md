@@ -2,7 +2,7 @@
 
 ## Situação
 
-**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 4 da quarta rodada de ajustes (área do administrador). Não há pendências (ver seções Ajustes).
+**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 1 da quinta rodada de ajustes (custo por cliente). Não há pendências (ver seções Ajustes).
 
 ## Resumo da entrega
 
@@ -190,3 +190,36 @@
 ### Situação
 
 **Aprovada.** `npm test`: 1316/1316 na plataforma, 0 falhas; `typecheck` e `lint` sem erros. Redirects 308 conferidos com curl na porta 3003. Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.
+
+## Ajustes (quinta rodada, 21/10/2026: custo por cliente)
+
+### Correções pedidas
+
+1. Tela interna `/admin/custos` ("Custos" na área do administrador), só para ADMIN, lendo só o banco.
+2. Período de cobrança de 21 a 20 no horário de Brasília, com seletor e "Desde o início".
+3. Uma linha por empresa, mais "Empresas removidas" e "Plataforma (sem empresa)"; Autenticar fora; ordem pelo custo.
+4. Preço pela faixa do total do tipo no período, período a período, com regra de arredondamento documentada e explicação no `<Explicacao>`.
+5. Só a linha de soma ao pé (custo total), sem cartões, projeção nem limite.
+6. Usar os componentes existentes (Tabela única com paginação).
+7. Testes no banco de teste, teste de acesso e documentação.
+
+### Como cada uma foi resolvida
+
+1. Entrada em `lib/admin.ts` com `quemVe: "admin"`; a página começa por `exigirAreaDoAdmin("/admin/custos")` (COMMON_USER e MANAGER recebem 404). Sem server action: período por formulário GET (`?periodo=AAAA-MM-21` ou `?periodo=inicio`). Nenhum import de Serpro, BrasilAPI ou eSocial.
+2. No núcleo (`precos.ts`): `periodoDe`, `limitesDoPeriodo`, `ultimoDiaDoPeriodo`, `ehChaveDePeriodo`; `inicioDoPeriodo` passou a independer do fuso do servidor (vale também para o `consumo()` do controle de limite). O SQL usa `at time zone 'America/Sao_Paulo'` e bate com o núcleo. Valor inválido ou período sem chamadas abre o atual.
+3. Cálculo em `lib/serpro/custos.ts`. Nova coluna `serpro_chamadas.sem_contribuinte` (migração 0015, gravada pelo `registro.ts`) separa empresas removidas das chamadas da plataforma; a migração marca as 4 autenticações antigas.
+4. Custo = soma por tipo de quantidade × preço da faixa do total do tipo, em centavos inteiros: a soma das linhas é exatamente o `custoMensal`. "Desde o início" soma período a período. A coluna `custo` gravada não entra. Regra em código e em `docs/plataforma.md`.
+5. e 6. Nova propriedade `rodape` da Tabela única ("Soma do período" / "Soma desde o início"), no computador e no celular.
+7. Testes novos: `custos.test.ts`, `custos-acesso.test.ts`, `custos.qa.test.ts` (QA), além de `precos.test.ts` e testes de acesso/fornecedor atualizados.
+
+### Ciclos desta rodada
+
+| Ciclo | Etapa | Resultado |
+|---|---|---|
+| 1 | Engenheiro | `/admin/custos`, cálculo por faixa em centavos, coluna `sem_contribuinte`, `rodape` da Tabela |
+| 1 | QA | Aprovado (casos extras de borda em `custos.qa.test.ts`) |
+| 1 | Tech lead | Aprovado |
+
+### Situação
+
+**Aprovada.** `npm test`: núcleo 376/376, plataforma 1350/1350; `typecheck` e `lint` sem erros. Na 3003, com os dados reais, R$ 5,92 (22 consultas, 2 emissões) no período 21/09 a 20/10/2026 e desde o início; nenhuma chamada nova em `serpro_chamadas` (28). Para ver a linha de soma no HTML da 3003 é preciso reiniciar o `npx next dev -p 3003`. Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.

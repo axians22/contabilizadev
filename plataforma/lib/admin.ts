@@ -2,7 +2,8 @@
 // tudo o que é de gestão da plataforma, e não de uma empresa. Esta lista é a única fonte de quem vê o quê: a barra lateral
 // da área, o layout e cada página (exigirAreaDoAdmin, lib/autenticacao/servidor.ts) leem daqui.
 //   - "gestao": MANAGER e ADMIN (os usuários, com as regras de quem altera quem em lib/autenticacao/papeis.ts);
-//   - "admin": só ADMIN (a visão geral com os avisos da plataforma, certificado e chaves da plataforma, plano do projeto).
+//   - "admin": só ADMIN (a visão geral com os avisos da plataforma, certificado e chaves da plataforma, custos das chamadas
+//     ao Serpro, plano do projeto).
 // O MANAGER vê só os usuários: a entrada da área, para ele, é /admin/usuarios (inicioDoAdmin).
 // Fechado por padrão: COMMON_USER nunca entra, e um endereço fora da lista não é liberado para ninguém.
 import type { Papel } from "@/banco/esquema";
@@ -18,6 +19,7 @@ export const PAGINAS_DO_ADMIN = [
   { href: "/admin", nome: "Visão geral", quemVe: "admin", exato: true, resumo: "O que precisa de atenção na plataforma e os atalhos da área." },
   { href: "/admin/usuarios", nome: "Usuários", quemVe: "gestao", resumo: "Quem usa a plataforma: buscar, desativar e mudar o papel." },
   { href: "/admin/plataforma", nome: "Certificado da plataforma", quemVe: "admin", resumo: "O e-CNPJ A1 e as chaves do contrato da plataforma, e a situação da integração." },
+  { href: "/admin/custos", nome: "Custos", quemVe: "admin", resumo: "O custo por cliente das chamadas ao Serpro, por período de cobrança." },
   { href: "/admin/plano", nome: "Plano do projeto", quemVe: "admin", resumo: "As partes do plano de construção, o que já foi feito e as decisões." },
 ] as const satisfies readonly PaginaDoAdmin[];
 

@@ -22,7 +22,6 @@ O plano por partes está em `plano.txt` (com a seção DECISÕES TOMADAS no fim)
   assinatura; falta o usuário rodar `git push --force-with-lease origin main` (o force push foi bloqueado aqui).
 - Pendências em aberto, para perguntar quando fizer sentido:
   - o `origin` do `../fiscal` aponta por engano para o repositório do contabilizadev;
-  - convite de membro para uma empresa (não existe tela);
   - visão interna de custo por cliente (dados em `serpro_chamadas`);
   - se `vieira89lucas@gmail.com` serve para algo (o admin é `vyeiralucas@gmail.com`).
 
@@ -38,6 +37,9 @@ O plano por partes está em `plano.txt` (com a seção DECISÕES TOMADAS no fim)
 - Só uma sessão do Claude por vez neste projeto: duas sessões ao mesmo tempo já sobrescreveram trabalho uma da outra.
 
 ## Modelo do produto (decisões do usuário)
+
+- Público: desenvolvedores que trabalham como PJ e controlam a própria empresa, sozinhos. Convite de membro está no
+  BACKLOG do `plano.txt`.
 
 - Self-service: a plataforma é a contratante do Serpro (Integra Contador) e paga cada chamada; o cliente nunca paga o
   Serpro. Cobrança só por plano da empresa.

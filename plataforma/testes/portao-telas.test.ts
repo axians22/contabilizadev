@@ -104,8 +104,8 @@ describe("cada aba de empresa passa pelo portão", () => {
   it("barra da área do administrador: grupo 'Administração'; MANAGER só vê os usuários, ADMIN tudo, COMMON_USER nada", () => {
     const itens = (papel: "ADMIN" | "MANAGER" | "COMMON_USER") => gruposDaAdministracao(papel).flatMap((g) => g.itens.map((i) => i.href));
     assert.deepEqual(gruposDaAdministracao("ADMIN").map((g) => g.titulo), ["Administração"]);
-    assert.deepEqual(itens("ADMIN"), ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/plano"]);
-    assert.deepEqual(gruposDaAdministracao("ADMIN")[0].itens.map((i) => i.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Plano do projeto"]);
+    assert.deepEqual(itens("ADMIN"), ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/custos", "/admin/plano"]);
+    assert.deepEqual(gruposDaAdministracao("ADMIN")[0].itens.map((i) => i.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Custos", "Plano do projeto"]);
     assert.deepEqual(itens("MANAGER"), ["/admin/usuarios"]);
     assert.deepEqual(itens("COMMON_USER"), []);
     // A visão geral só fica ativa na própria página.
