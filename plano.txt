@@ -40,7 +40,7 @@ PARTE 1 - NÚCLEO (SEM TELA)  [FEITO em 16/10/2026: núcleo completo; catálogo 
  6. Tabela de regras por CNAE de TI: anexo fixo, depende do Fator R, ou não atendido.
  7. Testes de tudo, usando os casos reais como referência (ex.: DAS de 09/2026 = R$ 1.000,76).
 
-PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: tela /admin/custos com custo por cliente, mensal e total]
+PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: abas Plano e Segurança em /admin/plano com componente único de abas]
  8. Site Next.js com banco Postgres e migrações.
  9. Login com Google e autorização, portados do projeto horizons (github.com/lucasjavit/horizons):
     - Google Identity Services (ID token) conferido no servidor com google-auth-library
@@ -104,6 +104,42 @@ PRIMEIRA VERSÃO (MVP) ATENDE SÓ
 BACKLOG (fora do plano por enquanto)
 - Convite de membro para uma empresa (21/10/2026): o banco já tem o papel MEMBRO em empresa_usuarios, mas não
   há tela. Fica para depois porque o público é o dev PJ que usa a própria empresa sozinho.
+
+
+SEGURANÇA
+Auditoria de 21/10/2026 (somente leitura, 5 frentes, cada achado confirmado por um segundo agente). Já está bom:
+isolamento entre empresas (toda ação e download confere o vínculo; trocar o id dá 404), rotas fechadas por padrão,
+/admin conferido no servidor, cookie de sessão assinado e só com hash no banco, SQL parametrizado, XML sem XXE,
+certificado do cliente nunca vai ao servidor, nenhum segredo no git.
+- [Alta] Sem limite de chamadas pagas por empresa: o limite de 40 por mês é da plataforma inteira, então um cliente
+  pode gastar tudo e travar os outros; duas chamadas ao mesmo tempo também podem passar do limite
+  (nucleo/src/serpro/cliente.ts, plataforma/lib/serpro/registro.ts). Correção: cota por empresa e reserva atômica.
+- [Média] Qualquer conta Google pode cadastrar o CNPJ de outra empresa e virar dona sem provar nada; o dono verdadeiro
+  fica bloqueado (plataforma/lib/empresas/cadastro.ts, servico.ts). A posse só deve valer depois do termo assinado
+  com o e-CNPJ. Decidir com o usuário (muda o cadastro).
+- [Média] O termo de autorização não confere a cadeia do certificado, só se parece ICP-Brasil: um certificado falso
+  passa e cada reenvio gasta uma chamada paga (nucleo/src/serpro/termo-autorizacao.ts). Correção: validar contra as
+  ACs raiz da ICP-Brasil e limitar reenvios. Decidir com o usuário (muda o termo).
+- [Média] Faltam os cabeçalhos de segurança do navegador (CSP, frame-ancestors, HSTS, nosniff, Referrer-Policy): uma
+  falha no site poderia usar o certificado que o cliente guardou no navegador (plataforma/next.config.ts).
+- [Média] O servidor local aceita conexões de fora da máquina (*:3003) com o login desligado e dados reais: um site
+  malicioso aberto no navegador consegue entrar como admin (DNS rebinding). O login desligado depende só do NODE_ENV.
+  Correção: subir em 127.0.0.1, recusar Host que não seja localhost e só aceitar AUTH_DISABLED em development
+  (plataforma/lib/autenticacao/config.ts, sessao-local.ts).
+- [Média] O Postgres está aberto na rede (0.0.0.0:5433) com a senha padrão "desenvolvimento", que está no
+  .env.exemplo do git (docker/docker-compose.yml). Correção: publicar só em 127.0.0.1 e senha forte fora do git.
+- [Média] Sem limite de tentativas no login, na consulta de CNPJ e nas ações. Depende da hospedagem (Parte 9).
+- [Média] Sem backup nem cópia segura das chaves de criptografia: se o .env.local se perder, os termos e o certificado
+  guardados ficam ilegíveis para sempre. Depende da hospedagem (Parte 9).
+- [Baixa] Sessão de 30 dias sem expirar por falta de uso e sem "sair de todos os dispositivos".
+- [Baixa] Login Google sem nonce (código de uso único).
+- [Baixa] A matrícula do eSocial entra no XML sem escape (nucleo/src/esocial/eventos.ts).
+- [Baixa] O download da guia (GET /documentos/guia-do-mes) pode disparar uma chamada paga.
+- [Baixa] O certificado guardado no navegador não é apagado ao sair e fica preso só ao CNPJ, não ao usuário.
+- [Baixa] Detalhes de configuração: imagem Docker como root, cabeçalho X-Powered-By, tamanho da tag GCM não fixado,
+  chave de cifra sem identificador para rotação, erro do Google inteiro no log.
+- [Decisão] Rota da área do administrador: trocar /admin por um nome aleatório fixo no código, que não deixe claro o
+  que é; quem não é ADMIN recebe 404, e somem as pistas (/admin e os redirecionamentos antigos).
 
 
 DECISÕES TOMADAS

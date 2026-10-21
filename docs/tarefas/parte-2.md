@@ -2,7 +2,7 @@
 
 ## Situação
 
-**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 2 da sexta rodada de ajustes (custo mensal e total). Não há pendências (ver seções Ajustes).
+**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 2 da sétima rodada de ajustes (abas Plano e Segurança). Não há pendências (ver seções Ajustes).
 
 ## Resumo da entrega
 
@@ -260,3 +260,36 @@ Pedido do usuário: "Quero custo mensal e total".
 ### Situação
 
 **Aprovada.** `npm test`: núcleo 376/376, plataforma 1376/1376; `typecheck` e `lint` sem erros. Na 3003, com os dados reais: período atual R$ 0,00, desde o início R$ 5,92 (22 × R$ 0,24 + 2 × R$ 0,32), 24 chamadas cobradas; nenhuma chamada nova em `serpro_chamadas` (28). Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.
+
+## Ajustes (abas Plano e Segurança em /admin/plano, 21/10/2026)
+
+### Correções pedidas
+
+1. `/admin/plano` com duas abas, Plano e Segurança, no padrão de abas de Avisos e mensagens; aba no endereço (`?aba=seguranca`), valor inválido abre Plano; só ADMIN.
+2. Aba Segurança: parágrafo inicial, itens na ordem do arquivo com selo de gravidade, contagem dos abertos por gravidade e dos feitos (`[FEITO em ...]`); seção fora da aba Plano.
+3. Leitor `lib/plano.ts`: título de lista com complemento entre parênteses (Backlog separado do MVP) e seção SEGURANÇA separada.
+4. Testes e documentação, sem alterar o texto do `plano.txt` nem corrigir itens de segurança.
+5. (Tech lead, ciclo 1, baixa) O `<nav>` de abas era cópia literal do de Avisos; reaproveitar num componente único.
+
+### Como cada uma foi resolvida
+
+1. `page.tsx` mantém `exigirAreaDoAdmin("/admin/plano")` e escolhe a aba com `abaDoPlano`; o desenho foi para `app/admin/plano/conteudo.tsx`.
+2. Contagem no topo, selos com as cores da central de avisos (Alta `bg-bad`, Média warn, Baixa neutra, Decisão com borda), item feito no estilo de Feito das partes.
+3. `interpretarPlano(texto)` testável; `plano.seguranca`, `itemDeSeguranca`, `contagemDeSeguranca`, `ABAS_DO_PLANO`, `capitalizar` (movido para a lib por citar o fornecedor).
+4. `lib/plano.test.ts`, `testes/plano-pagina.test.ts` (barreira real no banco de teste), `lib/plano.qa.test.ts` (QA) e `docs/plataforma.md`.
+5. `app/abas-da-pagina.tsx` (`<AbasDaPagina>`, contagem acima de 99 como "99+") usado em Avisos e em `/admin/plano`, mesmo HTML; `testes/abas-da-pagina.test.ts` e `testes/abas-da-pagina.qa.test.ts` (QA).
+
+### Ciclos desta rodada
+
+| Ciclo | Etapa | Resultado |
+|---|---|---|
+| 1 | Engenheiro | Abas Plano e Segurança, leitor da seção SEGURANÇA, Backlog como lista própria |
+| 1 | QA | Aprovado |
+| 1 | Tech lead | Reprovado (baixa): nav de abas copiado de Avisos |
+| 2 | Engenheiro | Componente único `AbasDaPagina` em Avisos e no plano |
+| 2 | QA | Aprovado |
+| 2 | Tech lead | Aprovado |
+
+### Situação
+
+**Aprovada.** `npm test`: núcleo 376/376, plataforma 1406/1406; `typecheck` e `lint` sem erros. Na 3003: aba Segurança com 1 Alta, 7 Média, 6 Baixa, 1 Decisão e 0 Feitos; aba inválida cai em Plano; nenhuma chamada nova em `serpro_chamadas`. Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.

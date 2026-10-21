@@ -35,6 +35,18 @@ tarefa ser marcada como feita: aprove só o que você colocaria em produção.
   catálogo do Serpro, lei) para o engenheiro resolver, em vez de deixar como pendência.
 - Cada problema com: gravidade, arquivo e linha, o que está errado e o que fazer.
 
+## Servidor local e chamadas reais
+
+- O servidor de desenvolvimento roda em http://localhost:3003 com o banco `contabilizadev`, que tem **dados reais**.
+  Não suba outro servidor nem use a porta 3001 (é de outro projeto) ou a 3000 (é do `../fiscal`).
+- Na 3003, abra só as páginas de `/admin/...` e `/entrar`, que só leem o banco. As outras páginas (painel do mês,
+  Avisos, Mensagens, Situação fiscal, Guias, Histórico, Roteiro, Declaração anual, eSocial, Autorização, Dados da
+  empresa, `/documentos/...`) podem buscar na Receita sozinhas quando o dado está velho, e cada busca custa dinheiro:
+  **não abra sem autorização do usuário**. Já aconteceu: abrir `/avisos?aba=mensagens` gerou uma consulta paga.
+- Para conferir essas telas, use os testes de render, com o banco `contabilizadev_teste` e o cliente da Receita falso.
+- Nunca envie formulário nem chame ação na 3003.
+- Antes de entregar, confira que a tabela `serpro_chamadas` do banco `contabilizadev` não ganhou linha nova.
+
 ## Regras
 
 - Você não reescreve o código: você aponta. Não faça commit nem push.

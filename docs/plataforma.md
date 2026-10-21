@@ -13,6 +13,16 @@
   de dados e os atalhos; o MANAGER que abre `/admin` vai para `/admin/usuarios`), Usuários (`/admin/usuarios`, a única
   página do MANAGER; ADMIN também), Certificado da plataforma (`/admin/plataforma`, só ADMIN), Custos (`/admin/custos`,
   só ADMIN) e Plano do projeto (`/admin/plano`, só ADMIN). Os endereços antigos (`/usuarios`, `/config/plataforma`, `/plano`) redirecionam (308).
+  O Plano do projeto lê o `plano.txt` a cada acesso (`lib/plano.ts`, a única fonte) e tem duas abas, com a aba no
+  endereço: Plano (introdução, partes e as listas — MVP, Backlog, Decisões; título de lista em maiúsculas, com um
+  complemento opcional em minúsculas entre parênteses no fim, como `BACKLOG (fora do plano por enquanto)`) e Segurança
+  (`?aba=seguranca`: a seção `SEGURANÇA`, que não aparece na aba Plano — o parágrafo inicial e cada item
+  `- [Alta|Média|Baixa|Decisão] texto`, com a continuação recuada, como uma linha com o selo da gravidade, na ordem do
+  arquivo e com a contagem no topo; o item que termina com `[FEITO em DD/MM/AAAA: resumo]` aparece como Feito e conta à
+  parte). Qualquer outro `?aba=` cai em Plano. O desenho fica em `app/admin/plano/conteudo.tsx`.
+- `app/abas-da-pagina.tsx` — o componente único de abas de página (`<AbasDaPagina rotulo abas atual />`), usado em
+  Avisos e mensagens e no Plano do projeto: links com a aba no endereço, `aria-current` na atual e selo de contagem
+  opcional (acima de 99 vira `99+`). Página nova com abas usa este componente, nunca um `<nav>` copiado.
 - `app/explicacao.tsx` — o tooltip único da aplicação (`<Explicacao>` e `<ExplicacaoDoTermo>`): toda explicação vai
   nele (ⓘ discreto ou o próprio termo sublinhado), nunca num parágrafo aberto. Abre ao passar o mouse, ao focar com Tab
   e ao tocar; fecha com Esc, clique fora ou Tab. Regras de abrir/fechar e de posição em `lib/explicacao.ts`.

@@ -32,6 +32,10 @@ O plano por partes está em `plano.txt` (com a seção DECISÕES TOMADAS no fim)
 - **Porta 3001 é de outro projeto (memo-stick) e a 3000 é do `../fiscal`.** O contabilizadev roda em
   http://localhost:3003: `cd plataforma && npx next dev -p 3003`. **Nunca** suba o servidor com `DATABASE_URL`
   sobrescrito ou apontando para o banco de teste (já aconteceu e o usuário viu dados de teste).
+- Na 3003, agentes (e você) só abrem `/admin/...` e `/entrar`. As páginas do painel e `/documentos/...` buscam na
+  Receita sozinhas quando o dado está velho e geram custo: só com autorização do usuário. Para conferir essas telas,
+  use os testes de render. Em 21/10/2026, um agente abriu `/avisos?aba=mensagens` e gerou uma consulta de R$ 0,24.
+  A regra está em "Servidor local e chamadas reais", em `.claude/agents/*.md`.
 - Local sem login (`AUTH_DISABLED=true`): entra como `dev@contabilizadev.local`, que é ADMIN e dona da empresa no banco.
   `ADMIN_EMAILS=vyeiralucas@gmail.com,dev@contabilizadev.local`.
 - Só uma sessão do Claude por vez neste projeto: duas sessões ao mesmo tempo já sobrescreveram trabalho uma da outra.

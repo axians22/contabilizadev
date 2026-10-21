@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AbasDaPagina, type AbaDaPagina } from "@/app/abas-da-pagina";
 import { Explicacao } from "@/app/explicacao";
 import { Titulo } from "@/app/ui";
 import { banco } from "@/banco";
@@ -45,7 +45,7 @@ export default async function AvisosEMensagens({ searchParams }: { searchParams:
   ]);
   const avisos = juntarAvisos(daEmpresa, doAdmin);
 
-  const abas: { id: Aba; nome: string; href: string; contagem: number; rotuloDaContagem: string }[] = [
+  const abas: AbaDaPagina<Aba>[] = [
     { id: "avisos", nome: "Avisos", href: "/avisos", contagem: avisos.length, rotuloDaContagem: avisos.length === 1 ? "1 aviso" : `${avisos.length} avisos` },
     {
       id: "mensagens",
@@ -77,25 +77,7 @@ export default async function AvisosEMensagens({ searchParams }: { searchParams:
         {aba.nome}
       </Titulo>
 
-      <nav aria-label="Avisos e mensagens" className="flex gap-1 border-b border-line">
-        {abas.map((a) => (
-          <Link
-            key={a.id}
-            href={a.href}
-            aria-current={a.id === atual ? "page" : undefined}
-            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              a.id === atual ? "border-accent-ink text-fg" : "border-transparent text-muted hover:text-fg"
-            }`}
-          >
-            {a.nome}
-            {a.contagem > 0 && (
-              <span className="rounded-full bg-raised px-2 text-xs tabular-nums" aria-label={a.rotuloDaContagem}>
-                {a.contagem > 99 ? "99+" : a.contagem}
-              </span>
-            )}
-          </Link>
-        ))}
-      </nav>
+      <AbasDaPagina rotulo="Avisos e mensagens" abas={abas} atual={atual} />
 
       {atual === "avisos" ? <ListaDeAvisos avisos={avisos} cnpj={empresa.cnpj} rotulo={rotuloDosAvisos({ daEmpresa: true, daPlataforma: doAdmin.length > 0 })} /> : <CaixaPostal empresa={empresa} acesso={acesso} />}
     </>

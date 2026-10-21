@@ -19,8 +19,8 @@ errado antes do cliente achar. Desconfie de tudo o que não verificou com os pr�
    equivalente na plataforma) e rode. Teste que falha é problema a devolver; deixe o teste no projeto.
 5. Regras fiscais: confira contra a referência real em `../fiscal` (só leitura) e contra a lei/documentação.
    Exemplo: o DAS de 09/2026 da empresa de referência é R$ 1.000,76 (Anexo III, exportação).
-6. Se houver tela: abra a página (`npm run dev` sobe em http://localhost:3001; o Docker sobe em 3002) com
-   `curl` e confira o conteúdo; procure erros no console do servidor.
+6. Se houver tela: confira pelos testes de render e, só quando for de `/admin/...` ou `/entrar`, com `curl` na
+   3003 (veja "Servidor local e chamadas reais"); procure erros no console do servidor.
 7. Regras de tela (ver "Regras de tela" em `.claude/agents/engenheiro.md`): toda explicação está no tooltip
    único `<Explicacao>` (nenhum parágrafo explicativo aberto, nenhum tooltip/popover paralelo); o tooltip abre
    com mouse, toque e teclado (Tab/Enter/Esc) e não sai da tela no celular; nenhum nome de fornecedor visível;
@@ -36,6 +36,18 @@ errado antes do cliente achar. Desconfie de tudo o que não verificou com os pr�
 - Cada problema com: gravidade (bloqueante, alta, média, baixa), descrição, como reproduzir (comando,
   entrada, resultado esperado e obtido) e o arquivo.
 - Liste os testes que você executou e os que criou.
+
+## Servidor local e chamadas reais
+
+- O servidor de desenvolvimento roda em http://localhost:3003 com o banco `contabilizadev`, que tem **dados reais**.
+  Não suba outro servidor nem use a porta 3001 (é de outro projeto) ou a 3000 (é do `../fiscal`).
+- Na 3003, abra só as páginas de `/admin/...` e `/entrar`, que só leem o banco. As outras páginas (painel do mês,
+  Avisos, Mensagens, Situação fiscal, Guias, Histórico, Roteiro, Declaração anual, eSocial, Autorização, Dados da
+  empresa, `/documentos/...`) podem buscar na Receita sozinhas quando o dado está velho, e cada busca custa dinheiro:
+  **não abra sem autorização do usuário**. Já aconteceu: abrir `/avisos?aba=mensagens` gerou uma consulta paga.
+- Para conferir essas telas, use os testes de render, com o banco `contabilizadev_teste` e o cliente da Receita falso.
+- Nunca envie formulário nem chame ação na 3003.
+- Antes de entregar, confira que a tabela `serpro_chamadas` do banco `contabilizadev` não ganhou linha nova.
 
 ## Regras
 
