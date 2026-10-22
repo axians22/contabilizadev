@@ -87,7 +87,7 @@ export function conferirAmbiente(env: Ambiente, fatos: FatosDoServidor): ItemDaC
       situacao: emProducao ? "production" : `${env.NODE_ENV || "não definido"} (não é produção)`,
       explicacao: [
         "Em produção tem de ser production: liga o cookie seguro e faz o login com Google ser obrigatório (o login desligado é ignorado).",
-        "A imagem do docker/Dockerfile já define NODE_ENV=production. No servidor de desenvolvimento (npm run dev) ela é development, e por isso este item fica como Falta aqui.",
+        "A imagem do Dockerfile já define NODE_ENV=production. No servidor de desenvolvimento (npm run dev) ela é development, e por isso este item fica como Falta aqui.",
       ],
     },
     {
@@ -181,7 +181,7 @@ export function conferirAmbiente(env: Ambiente, fatos: FatosDoServidor): ItemDaC
       situacao: !banco.ok ? "Sem banco, não dá para conferir" : emDia ? `Em dia (${banco.aplicadas} aplicadas)` : `${banco.aplicadas} de ${codigo.total} aplicadas`,
       explicacao: [
         "Compara as migrações aplicadas no banco com as que vêm no código (banco/migracoes).",
-        "A imagem aplica as migrações sozinha ao subir (o CMD do docker/Dockerfile roda npm run banco:migrar antes de iniciar o site). Atrasadas: veja os registros do deploy no Coolify.",
+        "A imagem aplica as migrações sozinha ao subir (o CMD do Dockerfile roda npm run banco:migrar antes de iniciar o site). Atrasadas: veja os registros do deploy no Coolify.",
       ],
     },
     {

@@ -91,7 +91,7 @@ contabilizadev.com.br apontando para o servidor, com certificado automático.
 Postgres 17 como recurso do Coolify, só na rede interna.
 
 - [ ] No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.
-  - O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker/docker-compose.yml).
+  - O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.yml).
   - Fonte: [Coolify: PostgreSQL](https://coolify.io/docs/databases/postgresql)
 - [ ] Deixe o Public access desligado (sem TCP proxy): o banco só é visto pela aplicação.
   - A documentação recomenda a rede privada para a aplicação e expor a 5432 só quando um cliente externo precisar. Aqui, nunca.
@@ -105,24 +105,24 @@ Postgres 17 como recurso do Coolify, só na rede interna.
 
 ## 4. Aplicação
 
-Build pelo docker/Dockerfile, a partir do GitHub.
+Build pelo Dockerfile, a partir do GitHub.
 
 - [ ] Ligue o repositório privado git@github.com:axians22/contabilizadev.git: GitHub App (Sources › New source › GitHub App) ou deploy key (Keys & Tokens › Private Keys).
   - A documentação recomenda a GitHub App (instale só neste repositório) e com ela o deploy no push já vem ligado.
   - Com deploy key: gere a chave no Coolify, cole a pública em Settings › Deploy keys do repositório, sem permissão de escrita, e crie o recurso com Private Repository (with Deploy Key) e a URL SSH.
   - Fonte: [Coolify: GitHub App](https://coolify.io/docs/applications/sources/github/app) · [Coolify: deploy key do GitHub](https://coolify.io/docs/applications/sources/github/deploy-key) · [Coolify: deploy automático do GitHub](https://coolify.io/docs/applications/sources/github/auto-deploy)
-- [ ] Crie a aplicação (+ New › Private Repository) com Build pack Dockerfile, Base Directory / e Dockerfile Location /docker/Dockerfile, branch main.
+- [ ] Crie a aplicação (+ New › Private Repository) com Build pack Dockerfile, Base Directory / e Dockerfile Location /Dockerfile, branch main.
   - O build é feito a partir da raiz do repositório (o Dockerfile copia nucleo/, plataforma/ e o plano.txt).
   - O clone do GitHub não tem o plataforma/.env.local (fora do git): os segredos vêm só das variáveis do Coolify.
-  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · docker/Dockerfile do projeto (`docker/Dockerfile`)
+  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · Dockerfile do projeto (`Dockerfile`)
 - [ ] Ports Exposes: 3001 (o next start do container escuta nessa porta).
   - O processo precisa escutar em 0.0.0.0, não só em 127.0.0.1, para o proxy do Coolify alcançar: o next start já escuta em todas as interfaces.
-  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · docker/Dockerfile do projeto (`docker/Dockerfile`)
+  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · Dockerfile do projeto (`Dockerfile`)
 - [ ] Migrações: deixe como estão, no CMD da imagem (npm run banco:migrar antes do start). Não use Pre/Post-deployment para elas.
   - O Pre-deployment roda no container ANTIGO, antes de ser trocado, e é pulado no primeiro deploy: aplicaria as migrações do código velho.
   - O Post-deployment roda no container novo só depois de o deploy ser dado como concluído (e uma falha não muda o status): o site novo subiria antes das migrações.
   - No CMD, o site só sobe depois das migrações aplicadas; se uma falhar, o site novo não sobe e o erro aparece nos registros. Rodar de novo não repete as já aplicadas.
-  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · docker/Dockerfile do projeto (`docker/Dockerfile`)
+  - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · Dockerfile do projeto (`Dockerfile`)
 - [ ] Healthcheck: HTTP, GET, http, Host localhost, Port 3001, Path /api/saude, com Start period de 60 s.
   - /api/saude responde 200 {"ok":true} com o banco no ar e 503 sem ele; é pública e não mostra nada além disso.
   - O check usa curl ou wget de dentro da imagem: a node:22-alpine tem o wget. O Start period cobre as migrações da subida.
@@ -159,7 +159,7 @@ Os segredos só no Coolify, com cópia das chaves de cifra fora do servidor.
   - O backup do banco não serve sem elas: o que está nele é cifrado.
   - Fonte: .env.exemplo do projeto (`.env.exemplo`)
 - [ ] Não crie AUTH_DISABLED nem DEV_USER_EMAIL. NODE_ENV já vem production da imagem.
-  - Fonte: docker/Dockerfile do projeto (`docker/Dockerfile`) · .env.exemplo do projeto (`.env.exemplo`)
+  - Fonte: Dockerfile do projeto (`Dockerfile`) · .env.exemplo do projeto (`.env.exemplo`)
 - [ ] O certificado da plataforma e as chaves do contrato vão pela tela Certificado da plataforma (/admin/plataforma), não por variável.
   - Ficam cifrados no banco com a PLATAFORMA_CHAVE; a senha do .pfx não é guardada. Assim não há arquivo .pfx no servidor.
   - Fonte: .env.exemplo do projeto (`.env.exemplo`)
@@ -174,7 +174,7 @@ Os segredos só no Coolify, com cópia das chaves de cifra fora do servidor.
 | `ADMIN_EMAILS` | Sim | Contas Google dos administradores, separadas por vírgula. Sem a conta de desenvolvimento. | — |
 | `PLATAFORMA_CNPJ` | Sim | CNPJ da plataforma: contratante do Serpro e destinatário do termo de autorização. | — |
 | `PLATAFORMA_RAZAO_SOCIAL` | Sim | Razão social do PLATAFORMA_CNPJ, como a Receita mostra (vai no termo). | — |
-| `NODE_ENV` | Sim | Já vem production na imagem (docker/Dockerfile): cookie seguro e login obrigatório. | `production` |
+| `NODE_ENV` | Sim | Já vem production na imagem (Dockerfile): cookie seguro e login obrigatório. | `production` |
 | `SERPRO_LIMITE_POR_PERIODO` | Não | Opcional: limite de chamadas cobradas por período de cobrança (padrão 40). | — |
 
 Não criar em produção:

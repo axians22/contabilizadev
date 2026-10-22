@@ -35,7 +35,7 @@ export const F = {
   registroBr: { texto: "Registro.br", href: "https://registro.br/" },
   google: { texto: "Google: Client ID do Sign In With Google", href: "https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid" },
   // Do próprio projeto (o código é a fonte).
-  dockerfileDoProjeto: { texto: "docker/Dockerfile do projeto", href: "docker/Dockerfile" },
+  dockerfileDoProjeto: { texto: "Dockerfile do projeto", href: "Dockerfile" },
   envExemplo: { texto: ".env.exemplo do projeto", href: ".env.exemplo" },
   login: { texto: "docs/login.md do projeto", href: "docs/login.md" },
   saudeDoProjeto: { texto: "Rota de saúde do projeto", href: "plataforma/app/api/saude/route.ts" },
@@ -59,7 +59,7 @@ export const VARIAVEIS: Variavel[] = [
   { nome: "ADMIN_EMAILS", obrigatoria: true, oQueFaz: "Contas Google dos administradores, separadas por vírgula. Sem a conta de desenvolvimento." },
   { nome: "PLATAFORMA_CNPJ", obrigatoria: true, oQueFaz: "CNPJ da plataforma: contratante do Serpro e destinatário do termo de autorização." },
   { nome: "PLATAFORMA_RAZAO_SOCIAL", obrigatoria: true, oQueFaz: "Razão social do PLATAFORMA_CNPJ, como a Receita mostra (vai no termo)." },
-  { nome: "NODE_ENV", obrigatoria: true, oQueFaz: "Já vem production na imagem (docker/Dockerfile): cookie seguro e login obrigatório.", valor: "production" },
+  { nome: "NODE_ENV", obrigatoria: true, oQueFaz: "Já vem production na imagem (Dockerfile): cookie seguro e login obrigatório.", valor: "production" },
   { nome: "SERPRO_LIMITE_POR_PERIODO", obrigatoria: false, oQueFaz: "Opcional: limite de chamadas cobradas por período de cobrança (padrão 40)." },
 ];
 // O que NÃO entra no Coolify em produção.
@@ -172,7 +172,7 @@ export const GUIA: SecaoDoGuia[] = [
       {
         id: "criar-postgres",
         texto: "No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.",
-        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker/docker-compose.yml)."],
+        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.yml)."],
         fontes: [F.postgres],
       },
       {
@@ -198,7 +198,7 @@ export const GUIA: SecaoDoGuia[] = [
   {
     id: "aplicacao",
     titulo: "4. Aplicação",
-    resumo: "Build pelo docker/Dockerfile, a partir do GitHub.",
+    resumo: "Build pelo Dockerfile, a partir do GitHub.",
     passos: [
       {
         id: "fonte-github",
@@ -211,7 +211,7 @@ export const GUIA: SecaoDoGuia[] = [
       },
       {
         id: "build-pack",
-        texto: "Crie a aplicação (+ New › Private Repository) com Build pack Dockerfile, Base Directory / e Dockerfile Location /docker/Dockerfile, branch main.",
+        texto: "Crie a aplicação (+ New › Private Repository) com Build pack Dockerfile, Base Directory / e Dockerfile Location /Dockerfile, branch main.",
         detalhe: [
           "O build é feito a partir da raiz do repositório (o Dockerfile copia nucleo/, plataforma/ e o plano.txt).",
           "O clone do GitHub não tem o plataforma/.env.local (fora do git): os segredos vêm só das variáveis do Coolify.",

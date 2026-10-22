@@ -23,7 +23,7 @@ export default async function PaginaDaProducao() {
           <Explicacao
             rotulo="Como a plataforma vai para a produção?"
             texto={[
-              "Num servidor próprio (VPS) com o Coolify v4: ele publica a plataforma pelo docker/Dockerfile a partir do GitHub, com o Postgres como recurso dele, HTTPS automático e backups agendados.",
+              "Num servidor próprio (VPS) com o Coolify v4: ele publica a plataforma pelo Dockerfile a partir do GitHub, com o Postgres como recurso dele, HTTPS automático e backups agendados.",
               "Cada passo cita a fonte (a documentação oficial do Coolify ou o código do projeto). O mesmo passo a passo está em docs/producao.md.",
             ]}
           />

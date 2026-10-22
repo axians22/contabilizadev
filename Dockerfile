@@ -1,5 +1,5 @@
 # Imagem da plataforma (Next.js) com o núcleo. Construída a partir da raiz do monorepo
-# (docker compose -f docker/docker-compose.yml); as exclusões ficam em Dockerfile.dockerignore.
+# (docker compose, ou o Coolify com Dockerfile Location /Dockerfile); as exclusões ficam em .dockerignore.
 FROM node:22-alpine AS base
 WORKDIR /app
 

@@ -259,7 +259,7 @@ describe("guia da produção e docs/producao.md", () => {
   });
 
   it("o Dockerfile ainda é o que o guia descreve (porta 3001 e migrações no CMD)", () => {
-    const dockerfile = readFileSync(path.join(RAIZ, "docker", "Dockerfile"), "utf8");
+    const dockerfile = readFileSync(path.join(RAIZ, "Dockerfile"), "utf8");
     assert.match(dockerfile, /EXPOSE 3001/);
     assert.match(dockerfile, /ENV NODE_ENV=production/);
     assert.match(dockerfile, /CMD \["sh", "-c", "npm run banco:migrar -w plataforma && npm run start -w plataforma"\]/);
