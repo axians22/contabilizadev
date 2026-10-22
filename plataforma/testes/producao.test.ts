@@ -73,6 +73,11 @@ const item = (itens: ItemDaConferencia[], chave: string) => {
 const faltam = (itens: ItemDaConferencia[]) => itens.filter((i) => !i.ok).map((i) => i.chave);
 
 describe("conferência do ambiente", () => {
+  it("SESSAO_HTTP_TESTE=true (teste em HTTP): só o cookie seguro fica como Falta, com o aviso de desfazer", () => {
+    const itens = conferirAmbiente({ ...PRODUCAO, SESSAO_HTTP_TESTE: "true" }, FATOS_OK);
+    assert.deepEqual(faltam(itens), ["cookie-seguro"]);
+    assert.match(item(itens, "cookie-seguro").situacao, /sem Secure: SESSAO_HTTP_TESTE=true/);
+  });
   it("produção completa: todos os itens em OK", () => {
     const itens = conferirAmbiente(PRODUCAO, FATOS_OK);
     assert.deepEqual(faltam(itens), []);

@@ -14,6 +14,8 @@ export function configDeTeste(extra: Partial<ConfigAutenticacao> = {}): ConfigAu
     loginDesligado: false,
     emailDesenvolvimento: "dev@contabilizadev.local",
     producao: false,
+    cookieSeguro: false,
+    sessaoHttpTeste: false,
     ...extra,
   };
 }

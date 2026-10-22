@@ -140,6 +140,10 @@ certificado do cliente nunca vai ao servidor, nenhum segredo no git.
 - [Baixa] O certificado guardado no navegador não é apagado ao sair e fica preso só ao CNPJ, não ao usuário.
 - [Baixa] Detalhes de configuração: imagem Docker como root, cabeçalho X-Powered-By, tamanho da tag GCM não fixado,
   chave de cifra sem identificador para rotação, erro do Google inteiro no log.
+- [Alta] TEMPORÁRIO, DESFAZER: o teste no Coolify roda em HTTP, sem certificado, com SESSAO_HTTP_TESTE=true, que tira o
+  Secure do cookie de sessão (senão o navegador descarta o login). Quando o domínio com DNS e HTTPS estiver pronto:
+  apagar a variável no Coolify, conferir "Cookie de sessão seguro" em OK em /admin/producao e remover o suporte do
+  código (lib/autenticacao/config.ts, sessaoHttpTeste/cookieSeguro) e do docker-compose.yaml.
 - [Decisão] Rota da área do administrador: trocar /admin por um nome aleatório fixo no código, que não deixe claro o
   que é; quem não é ADMIN recebe 404, e somem as pistas (/admin e os redirecionamentos antigos).
 

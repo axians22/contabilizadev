@@ -31,6 +31,6 @@ export async function abrirSessaoLocal(deps: Dependencias, requisicao: Request):
     return new Response(corpo, { status: 403, headers: { "content-type": "text/html; charset=utf-8" } });
   }
   const resposta = NextResponse.redirect(new URL(destinoDaSessaoLocal(url.searchParams.get("de")), url));
-  resposta.cookies.set(nomeDoCookie(deps.config.producao), sessao.cookie, opcoesDoCookie(deps.config.producao, sessao.expiraEm));
+  resposta.cookies.set(nomeDoCookie(deps.config.cookieSeguro), sessao.cookie, opcoesDoCookie(deps.config.cookieSeguro, sessao.expiraEm));
   return resposta;
 }

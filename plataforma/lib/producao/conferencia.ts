@@ -3,7 +3,7 @@
 // da requisição (lib/producao/servidor.ts), para os testes trocarem tudo.
 // Nunca devolve o valor de um segredo: só se está presente, válido ou não. Os nomes das variáveis aparecem (a área é
 // interna); o conteúdo, nunca.
-import { lerConfigAutenticacao, listaDeAdmins, loginDesligado, producao, ErroDeConfiguracao, TAMANHO_MINIMO_DO_SEGREDO } from "@/lib/autenticacao/config";
+import { cookieSeguro, lerConfigAutenticacao, listaDeAdmins, loginDesligado, producao, sessaoHttpTeste, ErroDeConfiguracao, TAMANHO_MINIMO_DO_SEGREDO } from "@/lib/autenticacao/config";
 import { nomeDoCookie } from "@/lib/autenticacao/cookie";
 import { lerCnpjPlataforma, lerRazaoPlataforma } from "@/lib/serpro/config";
 import { ErroDeChave, lerChavePlataforma, lerChaveToken } from "@/lib/termo/cifra";
@@ -107,9 +107,14 @@ export function conferirAmbiente(env: Ambiente, fatos: FatosDoServidor): ItemDaC
     {
       chave: "cookie-seguro",
       nome: "Cookie de sessão seguro",
-      ok: emProducao,
-      situacao: emProducao ? `${nomeDoCookie(true)}, Secure, httpOnly` : `${nomeDoCookie(false)}, sem Secure (desenvolvimento)`,
+      ok: cookieSeguro(env),
+      situacao: cookieSeguro(env)
+        ? `${nomeDoCookie(true)}, Secure, httpOnly`
+        : sessaoHttpTeste(env) && emProducao
+          ? `${nomeDoCookie(false)}, sem Secure: SESSAO_HTTP_TESTE=true (só teste, desfazer com o HTTPS)`
+          : `${nomeDoCookie(false)}, sem Secure (desenvolvimento)`,
       explicacao: [
+        "SESSAO_HTTP_TESTE=true é só para o teste em HTTP, sem certificado: tire a variável do Coolify quando o domínio com HTTPS estiver pronto.",
         "Em produção o cookie de sessão se chama __Host-sessao e vai com Secure: o navegador só o manda por HTTPS e não aceita que outro subdomínio o troque.",
         "Depende só de NODE_ENV=production. Sem HTTPS no domínio, o navegador recusa esse cookie e ninguém consegue entrar.",
       ],

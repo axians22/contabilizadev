@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import { abaDoPlano, contagemDeSeguranca, interpretarPlano, itemDeSeguranca, lerPlano } from "./plano";
 
 describe("QA: leitor do plano.txt", () => {
-  it("plano.txt real: MVP, Backlog e Decisões separados; SEGURANÇA fora das listas com 15 itens na ordem", () => {
+  it("plano.txt real: MVP, Backlog e Decisões separados; SEGURANÇA fora das listas com 16 itens na ordem", () => {
     const plano = lerPlano();
     const titulos = plano.listas.map((l) => l.titulo);
     const iMvp = titulos.findIndex((t) => /MVP/.test(t));
@@ -19,16 +19,16 @@ describe("QA: leitor do plano.txt", () => {
     const s = plano.seguranca!;
     assert.match(s.introducao, /^Auditoria de 21\/10\/2026/);
     assert.match(s.introducao, /nenhum segredo no git\.$/);
-    assert.equal(s.itens.length, 15);
+    assert.equal(s.itens.length, 16);
     assert.deepEqual(
       s.itens.map((i) => i.gravidade),
-      ["Alta", "Média", "Média", "Média", "Média", "Média", "Média", "Média", "Baixa", "Baixa", "Baixa", "Baixa", "Baixa", "Baixa", "Decisão"],
+      ["Alta", "Média", "Média", "Média", "Média", "Média", "Média", "Média", "Baixa", "Baixa", "Baixa", "Baixa", "Baixa", "Baixa", "Alta", "Decisão"],
     );
     assert.ok(s.itens.every((i) => !/^\[/.test(i.texto) && !/\s{2,}/.test(i.texto)));
     assert.match(s.itens[0].texto, /Correção: cota por empresa e reserva atômica\.$/);
     const c = contagemDeSeguranca(s.itens);
     // Dois itens de Média já feitos (posse pelo termo e cadeia do certificado, Parte 3 em 22/10/2026).
-    assert.deepEqual(c.porGravidade.map((g) => g.total), [1, 5, 6, 1]);
+    assert.deepEqual(c.porGravidade.map((g) => g.total), [2, 5, 6, 1]);
     assert.equal(c.feitos, 2);
     // A seção seguinte (DECISÕES TOMADAS) não entra na segurança.
     assert.ok(!s.itens.some((i) => /Postgres 17 \(Docker/.test(i.texto)));

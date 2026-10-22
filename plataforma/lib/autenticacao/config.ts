@@ -16,6 +16,11 @@ export type ConfigAutenticacao = {
   // Conta usada com o login desligado.
   emailDesenvolvimento: string;
   producao: boolean;
+  // Cookie de sessão com Secure e prefixo __Host-: em produção, salvo com SESSAO_HTTP_TESTE=true.
+  cookieSeguro: boolean;
+  // TEMPORÁRIO (teste no Coolify sem HTTPS): SESSAO_HTTP_TESTE=true deixa o cookie funcionar em HTTP. Desfazer quando o
+  // domínio com DNS e HTTPS estiver pronto (item da seção SEGURANÇA do plano.txt).
+  sessaoHttpTeste: boolean;
 };
 
 type Ambiente = Record<string, string | undefined>;
@@ -28,6 +33,12 @@ export const producao = (env: Ambiente = process.env) => env.NODE_ENV === "produ
 export function loginDesligado(env: Ambiente = process.env): boolean {
   return env.AUTH_DISABLED === "true" && !producao(env);
 }
+
+// TEMPORÁRIO: ver sessaoHttpTeste em ConfigAutenticacao. Só a string exata "true" liga.
+export const sessaoHttpTeste = (env: Ambiente = process.env) => env.SESSAO_HTTP_TESTE === "true";
+
+// O cookie só sai sem Secure fora de produção ou, em produção, com o teste em HTTP ligado.
+export const cookieSeguro = (env: Ambiente = process.env) => producao(env) && !sessaoHttpTeste(env);
 
 export function listaDeAdmins(valor: string | undefined): string[] {
   return (valor ?? "")
@@ -52,6 +63,8 @@ export function lerConfigAutenticacao(env: Ambiente = process.env): ConfigAutent
     loginDesligado: loginDesligado(env),
     emailDesenvolvimento: (env.DEV_USER_EMAIL?.trim() || "dev@contabilizadev.local").toLowerCase(),
     producao: producao(env),
+    cookieSeguro: cookieSeguro(env),
+    sessaoHttpTeste: sessaoHttpTeste(env),
   };
 }
 
@@ -62,6 +75,11 @@ export function avisosDaConfig(config: ConfigAutenticacao, env: Ambiente = proce
     avisos.push(`AUTH_DISABLED=true: login desligado (só desenvolvimento). O painel abre direto, sem tela de login, como ${config.emailDesenvolvimento}.`);
   } else if (env.AUTH_DISABLED === "true" && config.producao) {
     avisos.push("AUTH_DISABLED=true ignorado: em produção o login nunca é desligado.");
+  }
+  if (config.sessaoHttpTeste) {
+    avisos.push(
+      "SESSAO_HTTP_TESTE=true: cookie de sessão SEM Secure, para o teste em HTTP. Só para teste: tire a variável quando o domínio com HTTPS estiver pronto.",
+    );
   }
   if (!config.googleClientId) avisos.push("GOOGLE_CLIENT_ID não definido: o login com Google fica indisponível (veja o README).");
   if (config.adminEmails.length === 0) avisos.push("ADMIN_EMAILS vazio: ninguém é administrador.");

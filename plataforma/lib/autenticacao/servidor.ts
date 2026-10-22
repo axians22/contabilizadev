@@ -33,16 +33,16 @@ export type SessaoAtual = SessaoValida & { empresas: EmpresaDoUsuario[]; empresa
 // que pré-renderizar), e a configuração só é exigida quando o servidor atende de verdade.
 export async function lerCookieDeSessao(): Promise<string | undefined> {
   const jarra = await cookies();
-  return jarra.get(nomeDoCookie(configAutenticacao().producao))?.value;
+  return jarra.get(nomeDoCookie(configAutenticacao().cookieSeguro))?.value;
 }
 
 export async function gravarCookieDeSessao(valor: string, expiraEm: Date) {
-  const producao = configAutenticacao().producao;
-  (await cookies()).set(nomeDoCookie(producao), valor, opcoesDoCookie(producao, expiraEm));
+  const seguro = configAutenticacao().cookieSeguro;
+  (await cookies()).set(nomeDoCookie(seguro), valor, opcoesDoCookie(seguro, expiraEm));
 }
 
 export async function apagarCookieDeSessao() {
-  (await cookies()).delete(nomeDoCookie(configAutenticacao().producao));
+  (await cookies()).delete(nomeDoCookie(configAutenticacao().cookieSeguro));
 }
 
 // Uma leitura do banco por requisição (o cache do React vale só durante a requisição): usuário e empresas

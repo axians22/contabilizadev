@@ -5,11 +5,12 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 
 export const VALIDADE_DA_SESSAO_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
-// Em produção, o prefixo __Host- obriga Secure, Path=/ e nenhum Domain (o navegador recusa o cookie se faltar).
-export const nomeDoCookie = (producao: boolean) => (producao ? "__Host-sessao" : "sessao");
+// Cookie seguro (produção): o prefixo __Host- obriga Secure, Path=/ e nenhum Domain (o navegador recusa o cookie se
+// faltar). O parâmetro é ConfigAutenticacao.cookieSeguro, não só "é produção" (ver SESSAO_HTTP_TESTE).
+export const nomeDoCookie = (seguro: boolean) => (seguro ? "__Host-sessao" : "sessao");
 
-export function opcoesDoCookie(producao: boolean, expiraEm: Date) {
-  return { httpOnly: true, secure: producao, sameSite: "lax" as const, path: "/", expires: expiraEm };
+export function opcoesDoCookie(seguro: boolean, expiraEm: Date) {
+  return { httpOnly: true, secure: seguro, sameSite: "lax" as const, path: "/", expires: expiraEm };
 }
 
 const assinatura = (token: string, segredo: string) => createHmac("sha256", segredo).update(token).digest("base64url");

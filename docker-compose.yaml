@@ -52,6 +52,9 @@ services:
       PLATAFORMA_RAZAO_SOCIAL: ${PLATAFORMA_RAZAO_SOCIAL:?}
       # Opcional: limite de chamadas cobradas por período de cobrança (padrão 40).
       SERPRO_LIMITE_POR_PERIODO: ${SERPRO_LIMITE_POR_PERIODO:-40}
+      # TEMPORÁRIO, só para o teste em HTTP (sem certificado): "true" tira o Secure do cookie de sessão.
+      # Apague quando o domínio com DNS e HTTPS estiver pronto (item da seção SEGURANÇA do plano.txt).
+      SESSAO_HTTP_TESTE: ${SESSAO_HTTP_TESTE:-}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/api/saude || exit 1"]
       interval: 15s

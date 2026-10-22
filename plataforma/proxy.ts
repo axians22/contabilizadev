@@ -9,7 +9,7 @@ import { decidirAcesso, enderecoSemSessao } from "@/lib/autenticacao/rotas";
 export function proxy(requisicao: NextRequest) {
   const login = lerConfigAutenticacao();
   const caminho = requisicao.nextUrl.pathname;
-  const cookie = requisicao.cookies.get(nomeDoCookie(login.producao))?.value;
+  const cookie = requisicao.cookies.get(nomeDoCookie(login.cookieSeguro))?.value;
   const decisao = decidirAcesso(caminho, lerTokenAssinado(cookie, login.segredo) !== null, login.loginDesligado);
   if (decisao === "seguir") return NextResponse.next();
   if (decisao === "401") return NextResponse.json({ erro: "Entre para continuar." }, { status: 401 });
