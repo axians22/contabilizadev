@@ -91,7 +91,7 @@ contabilizadev.com.br apontando para o servidor, com certificado automático.
 Postgres 17 como recurso do Coolify, só na rede interna.
 
 - [ ] No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.
-  - O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.yml).
+  - O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.dev.yml).
   - Fonte: [Coolify: PostgreSQL](https://coolify.io/docs/databases/postgresql)
 - [ ] Deixe o Public access desligado (sem TCP proxy): o banco só é visto pela aplicação.
   - A documentação recomenda a rede privada para a aplicação e expor a 5432 só quando um cliente externo precisar. Aqui, nunca.

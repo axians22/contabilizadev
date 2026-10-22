@@ -11,12 +11,12 @@
     "test": "npm test -w nucleo && npm test -w plataforma",
     "lint": "npm run lint -w nucleo && npm run lint -w plataforma",
     "typecheck": "npm run typecheck -w nucleo && npm run typecheck -w plataforma",
-    "banco:subir": "docker compose up -d banco",
-    "banco:parar": "docker compose stop banco",
+    "banco:subir": "docker compose -f docker-compose.dev.yml up -d banco",
+    "banco:parar": "docker compose -f docker-compose.dev.yml stop banco",
     "banco:gerar": "npm run banco:gerar -w plataforma",
     "banco:migrar": "npm run banco:migrar -w plataforma",
-    "docker:subir": "docker compose --env-file plataforma/.env.local --profile completo up -d --build",
-    "docker:parar": "docker compose --env-file plataforma/.env.local --profile completo stop",
-    "docker:logs": "docker compose --env-file plataforma/.env.local --profile completo logs -f plataforma"
+    "docker:subir": "docker compose -f docker-compose.dev.yml --env-file plataforma/.env.local --profile completo up -d --build",
+    "docker:parar": "docker compose -f docker-compose.dev.yml --env-file plataforma/.env.local --profile completo stop",
+    "docker:logs": "docker compose -f docker-compose.dev.yml --env-file plataforma/.env.local --profile completo logs -f plataforma"
   }
 }

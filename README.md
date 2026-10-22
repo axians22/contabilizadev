@@ -9,7 +9,7 @@ sozinha, com a própria autorização. O plano, por partes, está em [`plano.txt
 |---|---|
 | `nucleo/` | Regras fiscais (Simples, Fator R, guias) e integrações (Receita Federal, eSocial), em TypeScript puro. Nada fixo de empresa. |
 | `plataforma/` | O site: Next.js 16, Tailwind 4, Drizzle + Postgres 17. Usa o núcleo como `@contabilizadev/nucleo`. |
-| raiz | `docker-compose.yml` (banco e, opcionalmente, a plataforma), `Dockerfile` (imagem de produção, usada pelo Coolify) e `.dockerignore`. |
+| raiz | `docker-compose.dev.yml` (banco local e, opcionalmente, a plataforma), `docker-compose.yml` (produção no Coolify), `Dockerfile` e `.dockerignore`. |
 | `nucleo/certificados/icp-brasil/` | Raízes e ACs oficiais da ICP-Brasil (do ITI), para conferir a cadeia do e-CNPJ do termo. Origem no `ORIGEM.md`. |
 | `docs/` | Documentação por assunto (abaixo) e os relatórios de cada parte em `docs/tarefas/`. |
 

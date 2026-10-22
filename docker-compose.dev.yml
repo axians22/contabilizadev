@@ -1,0 +1,63 @@
+# Ambiente local com Docker (desenvolvimento; a produção no Coolify usa o docker-compose.yml).
+# - Só o banco (para desenvolver com npm run dev): npm run banco:subir
+# - Tudo (banco + plataforma em http://localhost:3002): npm run docker:subir (lê o plataforma/.env.local, inclusive
+#   para montar o certificado da plataforma; o arquivo precisa existir)
+# Os dados do banco ficam no volume "contabilizadev-banco" e sobrevivem a reinícios.
+# Nome fixo do projeto: mantém os mesmos contêineres e volume, qualquer que seja a pasta do arquivo.
+name: contabilizadev
+
+services:
+  banco:
+    image: postgres:17-alpine
+    container_name: contabilizadev-banco
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: contabilizadev
+      POSTGRES_USER: contabilizadev
+      POSTGRES_PASSWORD: ${BANCO_SENHA:-desenvolvimento}
+    ports:
+      # 5433 para não brigar com algum Postgres que já exista na 5432.
+      - "5433:5432"
+    volumes:
+      - contabilizadev-banco:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contabilizadev -d contabilizadev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  plataforma:
+    # Só sobe com o perfil "completo", para não brigar com o npm run dev (porta 3001).
+    profiles: ["completo"]
+    build:
+      # O contexto é a raiz do monorepo (núcleo + plataforma), onde ficam o Dockerfile e o .dockerignore.
+      context: .
+      dockerfile: Dockerfile
+    container_name: contabilizadev-plataforma
+    restart: unless-stopped
+    depends_on:
+      banco:
+        condition: service_healthy
+    # Segredo da sessão, Client ID do Google e ADMIN_EMAILS vêm do mesmo .env.local do npm run dev (o segredo nunca
+    # fica neste arquivo). A imagem roda em produção: AUTH_DISABLED é ignorado e o login é sempre pelo Google.
+    env_file:
+      - path: ./plataforma/.env.local
+        required: false
+    environment:
+      # Dentro do Docker o banco é o serviço "banco" (sobrepõe a DATABASE_URL do .env.local).
+      DATABASE_URL: postgres://contabilizadev:${BANCO_SENHA:-desenvolvimento}@banco:5432/contabilizadev
+      # O .pfx da plataforma (e-CNPJ do contratante do Serpro) é montado só de leitura no caminho abaixo; sem
+      # CERT_PFX_PATH no .env.local fica vazio e a tela avisa que a integração não está configurada.
+      CERT_PFX_PATH: ${CERT_PFX_PATH:+/run/secrets/plataforma.pfx}
+    # Os scripts docker:* passam --env-file plataforma/.env.local: o CERT_PFX_PATH de lá (caminho absoluto no host,
+    # o mesmo do npm run dev) vira a origem da montagem. Sem ele, monta /dev/null (nada é lido).
+    volumes:
+      - type: bind
+        source: ${CERT_PFX_PATH:-/dev/null}
+        target: /run/secrets/plataforma.pfx
+        read_only: true
+    ports:
+      - "3002:3001"
+
+volumes:
+  contabilizadev-banco:

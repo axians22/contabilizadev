@@ -172,7 +172,7 @@ export const GUIA: SecaoDoGuia[] = [
       {
         id: "criar-postgres",
         texto: "No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.",
-        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.yml)."],
+        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.dev.yml)."],
         fontes: [F.postgres],
       },
       {

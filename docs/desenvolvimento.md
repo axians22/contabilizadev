@@ -3,7 +3,7 @@
 ## Banco de dados
 
 Postgres 17 no Docker (porta 5433), acessado com Drizzle ORM e o driver postgres.js. Os arquivos do Docker
-ficam na raiz do repositório (`docker-compose.yml`, `Dockerfile` e `.dockerignore`).
+ficam na raiz do repositório (`docker-compose.dev.yml` para o local, `docker-compose.yml` para o Coolify, `Dockerfile` e `.dockerignore`).
 
 1. Abra o Docker Desktop (com a integração do WSL ligada: Settings → Resources → WSL integration).
 2. `cp .env.exemplo plataforma/.env.local` (já feito no desenvolvimento local) e preencha `SESSAO_SEGREDO`

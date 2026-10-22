@@ -1,63 +1,63 @@
-# Ambiente local com Docker.
-# - Só o banco (para desenvolver com npm run dev): npm run banco:subir
-# - Tudo (banco + plataforma em http://localhost:3002): npm run docker:subir (lê o plataforma/.env.local, inclusive
-#   para montar o certificado da plataforma; o arquivo precisa existir)
-# Os dados do banco ficam no volume "contabilizadev-banco" e sobrevivem a reinícios.
-# Nome fixo do projeto: mantém os mesmos contêineres e volume, qualquer que seja a pasta do arquivo.
-name: contabilizadev
+# Produção (ou teste) no Coolify com o build pack Docker Compose.
+# No recurso: Base Directory "/" e Docker Compose Location "/docker-compose.yml".
+# O ambiente local (banco para o npm run dev) fica em docker-compose.dev.yml.
+# Domínio: em Domains, no serviço "plataforma", com a porta interna no fim: https://<seu-domínio>:3001
+#
+# - O banco não publica porta nenhuma: só a plataforma o alcança, pela rede interna do Coolify.
+# - Usuário e senha do banco são gerados pelo Coolify (variáveis SERVICE_USER_ e SERVICE_PASSWORD_) e ficam guardados nele.
+# - ${VAR:?} é obrigatória: o Coolify mostra a variável em Environment Variables e não faz o deploy sem ela.
+# - AUTH_DISABLED, DEV_USER_EMAIL, CERT_PFX_* e SERPRO_CONSUMER_* não entram aqui: o login é sempre pelo Google e o
+#   certificado e as chaves do contrato vão pela tela /admin/plataforma, cifrados no banco.
+# - Os backups agendados do Coolify são do recurso de banco separado; neste compose, faça backup do volume
+#   "banco-dados" (ou troque depois para o Postgres como recurso próprio, como no passo a passo de /admin/producao).
 
 services:
   banco:
     image: postgres:17-alpine
-    container_name: contabilizadev-banco
     restart: unless-stopped
     environment:
       POSTGRES_DB: contabilizadev
-      POSTGRES_USER: contabilizadev
-      POSTGRES_PASSWORD: ${BANCO_SENHA:-desenvolvimento}
-    ports:
-      # 5433 para não brigar com algum Postgres que já exista na 5432.
-      - "5433:5432"
+      POSTGRES_USER: ${SERVICE_USER_POSTGRES}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES}
     volumes:
-      - contabilizadev-banco:/var/lib/postgresql/data
+      - banco-dados:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U contabilizadev -d contabilizadev"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d contabilizadev"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   plataforma:
-    # Só sobe com o perfil "completo", para não brigar com o npm run dev (porta 3001).
-    profiles: ["completo"]
     build:
-      # O contexto é a raiz do monorepo (núcleo + plataforma), onde ficam o Dockerfile e o .dockerignore.
       context: .
       dockerfile: Dockerfile
-    container_name: contabilizadev-plataforma
     restart: unless-stopped
+    expose:
+      - "3001"
     depends_on:
       banco:
         condition: service_healthy
-    # Segredo da sessão, Client ID do Google e ADMIN_EMAILS vêm do mesmo .env.local do npm run dev (o segredo nunca
-    # fica neste arquivo). A imagem roda em produção: AUTH_DISABLED é ignorado e o login é sempre pelo Google.
-    env_file:
-      - path: ./plataforma/.env.local
-        required: false
     environment:
-      # Dentro do Docker o banco é o serviço "banco" (sobrepõe a DATABASE_URL do .env.local).
-      DATABASE_URL: postgres://contabilizadev:${BANCO_SENHA:-desenvolvimento}@banco:5432/contabilizadev
-      # O .pfx da plataforma (e-CNPJ do contratante do Serpro) é montado só de leitura no caminho abaixo; sem
-      # CERT_PFX_PATH no .env.local fica vazio e a tela avisa que a integração não está configurada.
-      CERT_PFX_PATH: ${CERT_PFX_PATH:+/run/secrets/plataforma.pfx}
-    # Os scripts docker:* passam --env-file plataforma/.env.local: o CERT_PFX_PATH de lá (caminho absoluto no host,
-    # o mesmo do npm run dev) vira a origem da montagem. Sem ele, monta /dev/null (nada é lido).
-    volumes:
-      - type: bind
-        source: ${CERT_PFX_PATH:-/dev/null}
-        target: /run/secrets/plataforma.pfx
-        read_only: true
-    ports:
-      - "3002:3001"
+      DATABASE_URL: postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@banco:5432/contabilizadev
+      # Gerar: openssl rand -base64 48
+      SESSAO_SEGREDO: ${SESSAO_SEGREDO:?}
+      # Gerar cada uma com: openssl rand -base64 32 (diferentes entre si). Guarde uma cópia fora do servidor:
+      # perdê-las deixa ilegíveis os termos e o certificado guardados.
+      TOKEN_CHAVE: ${TOKEN_CHAVE:?}
+      PLATAFORMA_CHAVE: ${PLATAFORMA_CHAVE:?}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?}
+      # Contas Google dos administradores, separadas por vírgula (sem a conta de desenvolvimento).
+      ADMIN_EMAILS: ${ADMIN_EMAILS:?}
+      PLATAFORMA_CNPJ: ${PLATAFORMA_CNPJ:?}
+      PLATAFORMA_RAZAO_SOCIAL: ${PLATAFORMA_RAZAO_SOCIAL:?}
+      # Opcional: limite de chamadas cobradas por período de cobrança (padrão 40).
+      SERPRO_LIMITE_POR_PERIODO: ${SERPRO_LIMITE_POR_PERIODO:-40}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/api/saude || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
-  contabilizadev-banco:
+  banco-dados:
