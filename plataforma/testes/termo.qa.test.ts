@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
-import { certificadoIcpDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
+import { certificadoIcpDeTeste, confiancaDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
 import type { Certificado } from "@contabilizadev/nucleo/http";
 import { clienteFalso } from "@contabilizadev/nucleo/serpro/cliente-falso";
 import type { Resposta } from "@contabilizadev/nucleo/serpro/cliente";
@@ -16,6 +16,7 @@ import { liberada } from "@/lib/termo/situacao";
 import { contextoSerpro, parametrosDoTermo, registrarTermo, situacaoTermo, type DependenciasTermo, type ParametrosTermo } from "@/lib/termo/termo";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil } from "./apoio";
+import { dadosDeSocio } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -46,6 +47,7 @@ const dependencias = (cliente: DependenciasTermo["cliente"], agora = AGORA): Dep
   cliente,
   contratante: PLATAFORMA,
   adminEmails: ["admin@plataforma.com"],
+  confianca: confiancaDeTeste(),
   agora: () => agora,
 });
 const entrar = async (quem: keyof typeof PERFIS) =>
@@ -65,6 +67,7 @@ const eCnpj = (extra: Partial<OpcoesCertificadoIcp> = {}) => certificadoIcpDeTes
 
 async function empresaDe(quem: keyof typeof PERFIS, cnpj: string, razaoSocial: string): Promise<AcessoEmpresa> {
   const usuario = await entrar(quem);
+  await dadosDeSocio(t.banco, usuario); // "Seus dados": o termo confere o CPF do responsável pelo e-CNPJ
   const empresa = await criarEmpresa(t.banco, usuario, { cnpj, razaoSocial });
   return exigirAcessoEmpresa(t.banco, usuario, empresa.id);
 }

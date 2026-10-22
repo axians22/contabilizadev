@@ -5,14 +5,15 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
 import { ErroConsultaCnpj, lerRespostaCnpj } from "@contabilizadev/nucleo/brasilapi/cnpj";
 import { buscarExemplo, buscarFalso, respostaGravada, type Exemplo } from "@contabilizadev/nucleo/brasilapi/exemplos";
-import { consultasCnpj, empresas, empresaUsuarios } from "@/banco/esquema";
+import { cnpjsConsultados, consultasCnpj, empresas, empresaUsuarios } from "@/banco/esquema";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, SemAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
 import { cadastrarPelaPrevia, consultarParaCadastro, NAO_ATENDIDA } from "@/lib/empresas/cadastro";
 import { dadosDaReceita, salvarConsulta, ultimaConsulta } from "@/lib/empresas/receita";
-import { criarEmpresa, ErroDeEmpresa } from "@/lib/empresas/servico";
+import { COMPROVADA_POR_OUTRA, criarEmpresa, ErroDeEmpresa } from "@/lib/empresas/servico";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps, perfil, SEGREDO } from "./apoio";
+import { comprovar, dadosDeSocio } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -24,18 +25,22 @@ const AGORA = new Date("2026-10-16T15:00:00Z");
 const DIA = 24 * 60 * 60 * 1000;
 const depois = (ms: number) => new Date(AGORA.getTime() + ms);
 
+// Ana e Beto, os dois sócios do exemplo ti-fator-r ("Seus dados" preenchidos: o cadastro confere o quadro de sócios).
 async function usuarios() {
   const ana = (await entrarComGoogle(deps(t.banco, PERFIS), "ana")).usuario;
   const beto = (await entrarComGoogle(deps(t.banco, PERFIS), "beto")).usuario;
+  await dadosDeSocio(t.banco, ana, "12345678000195", { nome: "Fulana de Tal Exemplo" });
+  await dadosDeSocio(t.banco, beto, "12345678000195", { nome: "Beltrano Exemplo" });
   return { ana, beto };
 }
 
-// Ana cadastra a empresa de TI do exemplo pelo fluxo completo.
+// Ana cadastra a empresa de TI do exemplo pelo fluxo completo e comprova (no site, pelo termo assinado com o e-CNPJ).
 async function cadastrada() {
   const { ana, beto } = await usuarios();
   const r = await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
   assert.equal(r.tipo, "previa");
   const empresaId = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: depois(60_000) });
+  await comprovar(t.banco, ana, empresaId);
   const acesso = await exigirAcessoEmpresa(t.banco, ana, empresaId);
   return { ana, beto, empresaId, acesso };
 }
@@ -48,7 +53,7 @@ async function guardarDireto(usuario: { id: string }, cnpj: string, exemplo: Exe
 }
 
 describe("consultarParaCadastro", () => {
-  it("CNPJ novo: consulta a BrasilAPI uma vez e devolve dados, diagnóstico e prévia assinada (sem gravar nada)", async () => {
+  it("CNPJ novo: consulta uma vez, guarda só a consulta pública e devolve dados, diagnóstico, o quadro de sócios conferido e a prévia", async () => {
     const { ana } = await usuarios();
     const buscar = buscarExemplo("ti-fator-r");
     const r = await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", { segredo: SEGREDO, agora: AGORA, buscar });
@@ -57,9 +62,16 @@ describe("consultarParaCadastro", () => {
     assert.equal(r.previa.dados.razaoSocial, "EXEMPLO SOFTWARE LTDA");
     assert.equal(r.previa.diagnostico.anexo, "III ou V");
     assert.equal(r.previa.diagnostico.atendido, true);
+    assert.equal(r.previa.qsa, "confere");
     assert.equal(r.previa.consultadaEm, AGORA.toISOString());
     assert.equal((await t.banco.select().from(empresas)).length, 0);
     assert.equal((await t.banco.select().from(consultasCnpj)).length, 0);
+    // Banco primeiro: a consulta pública fica guardada (sem usuário nem empresa) e a seguinte não chama de novo.
+    assert.equal((await t.banco.select().from(cnpjsConsultados)).length, 1);
+    const nada = buscarFalso();
+    const deNovo = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: depois(DIA), buscar: nada });
+    assert.equal(deNovo.tipo, "previa");
+    assert.equal(nada.chamadas.length, 0);
   });
 
   it("MEI: prévia sem anexo e sem Fator R, com o motivo; a consulta guardada (empresa já existente) também", async () => {
@@ -101,12 +113,25 @@ describe("consultarParaCadastro", () => {
     assert.equal(buscar.chamadas.length, 0);
   });
 
-  it("banco primeiro: CNPJ já cadastrado não consulta a BrasilAPI (dono volta a ela; outro recebe 'peça acesso')", async () => {
+  it("banco primeiro: CNPJ já comprovado não consulta nada (o dono volta a ela; outro recebe 'comprovada por outra conta')", async () => {
     const { ana, beto, empresaId } = await cadastrada();
     const buscar = buscarFalso();
     assert.deepEqual(await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, buscar }), { tipo: "ja-cadastrada", empresaId });
-    await assert.rejects(consultarParaCadastro(t.banco, beto, "12345678000195", { segredo: SEGREDO, buscar }), /já está cadastrado. Peça acesso/);
+    await assert.rejects(consultarParaCadastro(t.banco, beto, "12345678000195", { segredo: SEGREDO, buscar }), (e: unknown) => e instanceof ErroDeEmpresa && e.message === COMPROVADA_POR_OUTRA);
     assert.equal(buscar.chamadas.length, 0);
+  });
+
+  it("CNPJ só com o provisório de outro: segue como novo (não revela o outro cadastro) e quem já tem o provisório volta a ele", async () => {
+    const { ana, beto } = await usuarios();
+    const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+    assert.ok(r.tipo === "previa");
+    const empresaId = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+    const nada = buscarFalso();
+    const deBeto = await consultarParaCadastro(t.banco, beto, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: nada });
+    assert.equal(deBeto.tipo, "previa");
+    assert.equal(nada.chamadas.length, 0, "a consulta pública guardada serve");
+    assert.doesNotMatch(JSON.stringify(deBeto), /já está cadastrad|aguarda/);
+    assert.deepEqual(await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, buscar: nada }), { tipo: "ja-cadastrada", empresaId });
   });
 
   it("erro da BrasilAPI chega com a mensagem para o cliente", async () => {
@@ -119,7 +144,18 @@ describe("consultarParaCadastro", () => {
 });
 
 describe("cadastrarPelaPrevia", () => {
-  it("cria a empresa com a razão social da Receita, o usuário como DONO e a consulta guardada com o diagnóstico", async () => {
+  it("cria o cadastro provisório (aguardando comprovação), sem nenhum dado na empresa", async () => {
+    const { ana } = await usuarios();
+    const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+    assert.ok(r.tipo === "previa");
+    const empresaId = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+    const [vinculo] = await t.banco.select().from(empresaUsuarios).where(eq(empresaUsuarios.empresaId, empresaId));
+    assert.deepEqual([vinculo.usuarioId, vinculo.papel], [ana.id, "PROVISORIO"]);
+    assert.equal((await t.banco.select().from(consultasCnpj)).length, 0);
+    await assert.rejects(exigirAcessoEmpresa(t.banco, ana, empresaId), /aguarda comprovação/);
+  });
+
+  it("comprovada (termo aceito): a razão social da Receita, o usuário como DONO e a consulta do cadastro guardada com o diagnóstico", async () => {
     const { ana, empresaId } = await cadastrada();
     const [empresa] = await t.banco.select().from(empresas).where(eq(empresas.id, empresaId));
     assert.deepEqual([empresa.cnpj, empresa.razaoSocial], ["12345678000195", "EXEMPLO SOFTWARE LTDA"]);
@@ -175,15 +211,23 @@ describe("cadastrarPelaPrevia", () => {
     assert.equal((await t.banco.select().from(empresas)).length, 0);
   });
 
-  it("duas pessoas com a prévia do mesmo CNPJ: a segunda a confirmar recebe 'já cadastrado'", async () => {
+  it("duas pessoas do quadro com a prévia do mesmo CNPJ: as duas ficam com o próprio provisório (o CNPJ não fica bloqueado)", async () => {
     const { ana, beto } = await usuarios();
     const opcoes = { segredo: SEGREDO, agora: AGORA };
     const pa = await consultarParaCadastro(t.banco, ana, "12345678000195", { ...opcoes, buscar: buscarExemplo("ti-fator-r") });
-    const pb = await consultarParaCadastro(t.banco, beto, "12345678000195", { ...opcoes, buscar: buscarExemplo("ti-fator-r") });
+    const pb = await consultarParaCadastro(t.banco, beto, "12345678000195", { ...opcoes, buscar: buscarFalso() });
     assert.ok(pa.tipo === "previa" && pb.tipo === "previa");
-    await cadastrarPelaPrevia(t.banco, ana, pa.previa.token, opcoes);
-    await assert.rejects(cadastrarPelaPrevia(t.banco, beto, pb.previa.token, opcoes), ErroDeEmpresa);
-    assert.equal((await t.banco.select().from(consultasCnpj)).length, 1);
+    const idA = await cadastrarPelaPrevia(t.banco, ana, pa.previa.token, opcoes);
+    const idB = await cadastrarPelaPrevia(t.banco, beto, pb.previa.token, opcoes);
+    assert.equal(idA, idB);
+    const vinculos = await t.banco.select().from(empresaUsuarios).where(eq(empresaUsuarios.empresaId, idA));
+    assert.deepEqual(vinculos.map((v) => v.papel).sort(), ["PROVISORIO", "PROVISORIO"]);
+    assert.equal((await t.banco.select().from(consultasCnpj)).length, 0);
+    // Comprovada por um, o outro não entra mais.
+    await comprovar(t.banco, ana, idA);
+    const pc = await consultarParaCadastro(t.banco, ana, "12345678000195", { ...opcoes, buscar: buscarFalso() });
+    assert.equal(pc.tipo, "ja-cadastrada");
+    await assert.rejects(cadastrarPelaPrevia(t.banco, beto, pb.previa.token, opcoes), (e: unknown) => e instanceof ErroDeEmpresa && e.message === COMPROVADA_POR_OUTRA);
   });
 });
 

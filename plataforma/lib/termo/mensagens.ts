@@ -16,7 +16,10 @@ export type MotivoPlataforma =
   | "cnpj-alfanumerico"
   | "sem-termo"
   | "termo-vencido"
-  | "termo-recusado";
+  | "termo-recusado"
+  | "sem-dados-pessoais" // falta "Seus dados": sem o CPF, não dá para conferir o responsável pelo e-CNPJ
+  | "limite-de-envios" // a empresa passou do limite de envios do termo (por hora ou por dia)
+  | "comprovada-por-outra"; // enquanto este envio esperava, outra conta comprovou a empresa
 
 // Quando o passo 7 do cadastro não abre: a empresa já está cadastrada, então a autorização fica para depois.
 export const AUTORIZAR_DEPOIS = "Não deu para abrir a autorização agora. A empresa já está cadastrada: autorize depois, pela página Autorização.";
@@ -39,6 +42,9 @@ export const MENSAGENS_DA_PLATAFORMA: Record<MotivoPlataforma, string> = {
   "sem-termo": "Autorização pendente: a empresa ainda não assinou o termo de autorização.",
   "termo-vencido": "A autorização venceu. Assine de novo para renovar.",
   "termo-recusado": "A Receita Federal recusou a autorização guardada. Assine de novo para renovar.",
+  "sem-dados-pessoais": "Para assinar o termo, preencha antes Seus dados (menu do usuário): o CPF do responsável pelo e-CNPJ precisa ser o seu.",
+  "limite-de-envios": "O termo desta empresa já foi enviado muitas vezes agora (até 3 por hora e 10 por dia). Confira o certificado e tente de novo mais tarde.",
+  "comprovada-por-outra": "Esta empresa foi comprovada por outra conta enquanto você assinava. Nada foi enviado.",
 };
 
 export const MENSAGENS_DO_ENVIO: Record<MotivoRecusa, string> = {

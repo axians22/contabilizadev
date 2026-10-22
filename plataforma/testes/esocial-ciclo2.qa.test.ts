@@ -21,7 +21,6 @@ import { assinanteDoArquivo, type Assinante } from "@/lib/assinador/assinador";
 import { cofreDoNavegador } from "@/lib/assinador/cofre";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { salvarConfigEsocial, type DadosDaConfig } from "@/lib/esocial/configuracao";
 import {
   acompanharEnvio,
@@ -69,9 +68,9 @@ const navegador = (certificado = E_CNPJ, numero = SUPORTE, agora = AGORA): Promi
 async function empresa(quem: "ana" | "beto" = "ana", exemplo: "ti-anexo-iii" | "ti-fator-r" = "ti-anexo-iii") {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), quem)).usuario;
   const numero = exemplo === "ti-anexo-iii" ? "98.765.432/0001-98" : "12.345.678/0001-95";
-  const r = await consultarParaCadastro(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
+  const r = await consultarComDados(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   return { usuario, empresaId, acesso: await exigirAcessoEmpresa(t.banco, usuario, empresaId) };
 }
 
@@ -144,6 +143,7 @@ async function prontaParaEnviar(proLabore = 1_621) {
 import { dctfwebEnvios, esocialEnvios } from "@/banco/esquema";
 import { enviarEsocialPelaPlataforma, situacaoEsocial } from "@/lib/esocial/envio";
 import { transmitirDctfMes } from "@/lib/rotina/dctfweb";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 const TOKEN_C2 = "b06feea3-1ca8-49f4-bdb4-211ab006cb92";
 const okC2 = (dados: unknown): Resposta => ({ status: 200, dados, mensagens: [{ codigo: "Sucesso", texto: "ok" }] });

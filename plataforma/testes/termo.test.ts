@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
 import { buscarExemplo, buscarFalso, respostaGravada } from "@contabilizadev/nucleo/brasilapi/exemplos";
-import { certificadoIcpDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
+import { certificadoIcpDeTeste, confiancaDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
 import type { Certificado, Transporte } from "@contabilizadev/nucleo/http";
 import { clienteFalso } from "@contabilizadev/nucleo/serpro/cliente-falso";
 import { criarClienteSerpro, type Resposta } from "@contabilizadev/nucleo/serpro/cliente";
@@ -17,7 +17,7 @@ import { entrarComGoogle, resolverSessao } from "@/lib/autenticacao/servico";
 import { removerEmpresa } from "@/lib/empresas/remocao";
 import { exigirAcessoEmpresa, SemAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
 import { autorizacaoDoPreparo, ESTADO_INICIAL, reduzir, vistaDaAutorizacao, type EventoAssistente } from "@/lib/empresas/assistente";
-import { cadastrarPelaPrevia, CNPJ_RESERVADO, consultarParaCadastro } from "@/lib/empresas/cadastro";
+import { CNPJ_RESERVADO } from "@/lib/empresas/cadastro";
 import { criarEmpresa, ErroDeEmpresa } from "@/lib/empresas/servico";
 import { decifrar } from "@/lib/termo/cifra";
 import { nomeDaPlataforma } from "@/lib/termo/plataforma";
@@ -37,6 +37,7 @@ import {
 import { registroNoBanco } from "@/lib/serpro/registro";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados, dadosDeSocio } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -66,7 +67,7 @@ const meiaNoiteDeAmanha = (agora: Date) => `${new Date(agora.getTime() + DIA).to
 const recusa = (codigo: string): Resposta => ({ status: 403, dados: undefined, mensagens: [{ codigo: `[AcessoNegado-AUTENTICAPROCURADOR-${codigo}]`, texto: "texto da API" }] });
 
 function dependencias(cliente: DependenciasTermo["cliente"], agora = AGORA): DependenciasTermo {
-  return { banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: ADMINS, agora: () => agora };
+  return { banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: ADMINS, confianca: confiancaDeTeste(), agora: () => agora };
 }
 
 // O que a tela faz no navegador: abre o .pfx com a senha, confere, monta o termo com os parâmetros do servidor e assina.
@@ -87,9 +88,9 @@ const eCnpjDaEmpresa = (extra: Partial<OpcoesCertificadoIcp> = {}) => certificad
 async function cliente1() {
   const ana = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "ana")).usuario;
   const beto = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "beto")).usuario;
-  const r = await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+  const r = await consultarComDados(t.banco, ana, "12.345.678/0001-95", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   const acesso = await exigirAcessoEmpresa(t.banco, ana, empresaId);
   return { ana, beto, empresaId, acesso };
 }
@@ -433,19 +434,19 @@ describe("passo 16: termo de autorização de ponta a ponta (cliente 1, envio fa
     // Na ordem: a empresa da Ana, a prévia sem reserva e a do administrador. A recusa não consulta nada.
     const buscar = buscarFalso({ status: 200, corpo: respostaGravada("ti-fator-r") }, daPlataforma, daPlataforma);
     const opcoes = { segredo: SEGREDO, agora: AGORA, buscar, cnpjReservado: PLATAFORMA.numero };
-    await assert.rejects(consultarParaCadastro(t.banco, ana, "11.444.777/0001-61", opcoes), (e: Error) => e instanceof ErroDeEmpresa && e.message === CNPJ_RESERVADO);
+    await assert.rejects(consultarComDados(t.banco, ana, "11.444.777/0001-61", opcoes), (e: Error) => e instanceof ErroDeEmpresa && e.message === CNPJ_RESERVADO);
     assert.equal(buscar.chamadas.length, 0);
     // A prévia de outro CNPJ continua normal; uma prévia do CNPJ reservado (feita antes da regra) também é recusada.
-    const outra = await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", opcoes);
+    const outra = await consultarComDados(t.banco, ana, "12.345.678/0001-95", opcoes);
     assert.equal(outra.tipo, "previa");
-    const semReserva = await consultarParaCadastro(t.banco, ana, "11.444.777/0001-61", { ...opcoes, cnpjReservado: null });
+    const semReserva = await consultarComDados(t.banco, ana, "11.444.777/0001-61", { ...opcoes, cnpjReservado: null });
     assert.equal(semReserva.tipo, "previa");
-    await assert.rejects(cadastrarPelaPrevia(t.banco, ana, semReserva.previa.token, opcoes), (e: Error) => e.message === CNPJ_RESERVADO);
+    await assert.rejects(cadastrarComprovada(t.banco, ana, semReserva.previa.token, opcoes), (e: Error) => e.message === CNPJ_RESERVADO);
 
     const admin = await entrar("admin");
-    const r = await consultarParaCadastro(t.banco, admin, "11.444.777/0001-61", opcoes);
+    const r = await consultarComDados(t.banco, admin, "11.444.777/0001-61", opcoes);
     assert.equal(r.tipo, "previa");
-    const empresaId = await cadastrarPelaPrevia(t.banco, admin, r.previa.token, opcoes);
+    const empresaId = await cadastrarComprovada(t.banco, admin, r.previa.token, opcoes);
     const acesso = await exigirAcessoEmpresa(t.banco, admin, empresaId);
     assert.deepEqual(await situacaoTermo(dependencias(clienteFalso()), acesso), { estado: "propria" });
   });
@@ -467,7 +468,8 @@ describe("passo 16: termo de autorização de ponta a ponta (cliente 1, envio fa
     const acessoB = await exigirAcessoEmpresa(t.banco, beto, empresaB.id);
     await assert.rejects(exigirAcessoEmpresa(t.banco, beto, acesso.empresaId), SemAcessoEmpresa);
     assert.equal((await situacaoTermo(dependencias(cliente), acessoB)).estado, "ausente");
-    await assinado(acessoB, cliente, certificadoIcpDeTeste({ tipo: "PJ", numero: "11222333000181", nome: "EMPRESA B LTDA" }));
+    const cpfBeto = await dadosDeSocio(t.banco, beto); // o e-CNPJ da B está em nome do Beto
+    await assinado(acessoB, cliente, certificadoIcpDeTeste({ tipo: "PJ", numero: "11222333000181", nome: "EMPRESA B LTDA", responsavel: { cpf: cpfBeto } }));
 
     // Alguém com acesso ao banco copia o token cifrado da empresa A para a B: não abre (cifra presa à empresa e ao registro).
     const [a] = await linhas(acesso);
@@ -560,14 +562,14 @@ describe("assistente: cadastro no passo 5 e autorização no passo 7 (envio fals
   it("cadastra, prepara o passo 7, assina com o e-CNPJ A1 e envia: autorização concluída; voltar não recadastra", async () => {
     const ana = await entrar("ana");
     const opcoes = { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r"), cnpjReservado: PLATAFORMA.numero };
-    const r = await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", opcoes);
+    const r = await consultarComDados(t.banco, ana, "12.345.678/0001-95", opcoes);
     assert.equal(r.tipo, "previa");
     const continuar = { tipo: "continuar", agora: AGORA.getTime() } as const;
     let e = passos({ tipo: "digitar", cnpj: "12.345.678/0001-95" }, { tipo: "consultou", previa: r.previa, agora: AGORA.getTime() }, continuar, continuar, continuar);
     assert.equal(e.etapa, "diagnostico");
 
     // Passo 5: cadastra (Ana é a dona). Logo depois, o preparo do passo 7 (só banco: nada é chamado).
-    const empresaId = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, opcoes);
+    const empresaId = await cadastrarComprovada(t.banco, ana, r.previa.token, opcoes);
     const acesso = await exigirAcessoEmpresa(t.banco, ana, empresaId);
     const cliente = clienteFalso(tokenRecebido(TOKEN, meiaNoiteDeAmanha(AGORA)));
     const d = dependencias(cliente);
@@ -588,7 +590,7 @@ describe("assistente: cadastro no passo 5 e autorização no passo 7 (envio fals
     assert.equal(e.etapa, "autorizacao");
     assert.equal((await t.banco.select().from(empresas)).length, 1);
     // Mesmo que o mesmo CNPJ fosse pesquisado de novo, a empresa já existe: o servidor só a abre, sem duplicar.
-    assert.deepEqual(await consultarParaCadastro(t.banco, ana, "12.345.678/0001-95", opcoes), { tipo: "ja-cadastrada", empresaId });
+    assert.deepEqual(await consultarComDados(t.banco, ana, "12.345.678/0001-95", opcoes), { tipo: "ja-cadastrada", empresaId });
 
     // Passo 7: assina no "navegador" com os parâmetros do preparo e envia, como a página Autorização.
     assert.ok(autorizacao.tipo === "assinar");
@@ -618,9 +620,9 @@ describe("assistente: cadastro no passo 5 e autorização no passo 7 (envio fals
     const admin = await entrar("admin");
     const daPlataforma = { status: 200, corpo: { ...respostaGravada("ti-fator-r"), cnpj: PLATAFORMA.numero } };
     const opcoes = { segredo: SEGREDO, agora: AGORA, buscar: buscarFalso(daPlataforma), cnpjReservado: PLATAFORMA.numero };
-    const r = await consultarParaCadastro(t.banco, admin, "11.444.777/0001-61", opcoes);
+    const r = await consultarComDados(t.banco, admin, "11.444.777/0001-61", opcoes);
     assert.equal(r.tipo, "previa");
-    const acesso = await exigirAcessoEmpresa(t.banco, admin, await cadastrarPelaPrevia(t.banco, admin, r.previa.token, opcoes));
+    const acesso = await exigirAcessoEmpresa(t.banco, admin, await cadastrarComprovada(t.banco, admin, r.previa.token, opcoes));
     const nada = clienteFalso();
     const preparo = await prepararAutorizacao(dependencias(nada), acesso);
     assert.deepEqual(preparo, { situacao: { estado: "propria" }, parametros: null, bloqueio: null });

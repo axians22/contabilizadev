@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Explicacao, ExplicacaoDoTermo } from "@/app/explicacao";
 import { Cartao, Secao, Titulo, botaoLink } from "@/app/ui";
 import { abaDaEmpresa } from "@/lib/abas";
+import type { Portao } from "@/lib/empresas/portao";
 import { exigirConteudo } from "@/lib/empresas/portao-servidor";
 import { formatarCnpj } from "@/lib/empresas/cnpj";
 import { termoDoServidor } from "@/lib/termo/servidor";
@@ -22,6 +23,7 @@ export const metadata = { title: "Autorização · ContabilizaDev" };
 // portão: sem empresa (ou sem plano) a aba mostra o estado vazio. A empresa da própria plataforma não precisa de termo.
 export default async function Autorizacao() {
   const { portao } = await exigirConteudo();
+  if (portao.estado === "aguardando") return <Comprovar portao={portao} />;
   if (portao.estado !== "liberado") return <PortaoFechado aba={abaDaEmpresa("/autorizacao")} portao={portao} />;
   const { empresa, acesso } = portao;
   const deps = await termoDoServidor();
@@ -74,6 +76,49 @@ export default async function Autorizacao() {
           Voltar ao painel
         </Link>
       </div>
+    </>
+  );
+}
+
+// Empresa aguardando comprovação (cadastro provisório): esta é a única aba que abre, com o termo para assinar. O termo
+// assinado com o e-CNPJ em nome do CPF do usuário é a prova de que a empresa é dele; nenhum dado da empresa aparece aqui.
+async function Comprovar({ portao }: { portao: Extract<Portao, { estado: "aguardando" }> }) {
+  const { empresa } = portao;
+  const { parametros, bloqueio } = await prepararAutorizacao(await termoDoServidor(), portao.termo);
+  return (
+    <>
+      <Titulo
+        sobre={`${empresa.razaoSocial} · CNPJ ${formatarCnpj(empresa.cnpj)}`}
+        explicacao={
+          <Explicacao
+            rotulo="Por que preciso comprovar que a empresa é minha?"
+            titulo="Comprovação da empresa"
+            texto={[
+              "Qualquer pessoa pode digitar um CNPJ. Para ninguém ver os dados de uma empresa que não é sua, conferimos o termo assinado com o e-CNPJ A1 da empresa: ele precisa ter sido emitido pela ICP-Brasil para o seu CPF (o mesmo de Seus dados).",
+              "Assinado o termo, a empresa fica comprovada, o conteúdo abre e a autorização já fica valendo.",
+            ]}
+          />
+        }
+      >
+        Autorização
+      </Titulo>
+      <Cartao className="flex flex-col gap-1 border-warn/40 bg-warn-soft px-5 py-4 text-sm">
+        <b className="font-semibold">Esta empresa aguarda comprovação.</b>
+        <span>Assine o termo de autorização com o e-CNPJ da empresa, emitido em nome do seu CPF.</span>
+      </Cartao>
+      <Secao titulo="Assinar o termo de autorização" explicacao={<ExplicacaoDoTermo termo="termo" />}>
+        {parametros ? (
+          <AssinarTermo
+            empresaId={empresa.id}
+            parametros={parametros}
+            textoOficial={<TextoOficial contratante={parametros.contratante} empresa={parametros.empresa} />}
+            enviar={enviarTermoAcao}
+            comprovacao
+          />
+        ) : (
+          <Cartao className="border-warn/40 bg-warn-soft px-5 py-4 text-sm">{bloqueio}</Cartao>
+        )}
+      </Secao>
     </>
   );
 }

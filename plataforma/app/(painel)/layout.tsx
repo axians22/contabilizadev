@@ -1,7 +1,10 @@
 import { BarraLateral } from "@/app/barra-lateral";
 import { MenuUsuario } from "@/app/(painel)/menu-usuario";
 import { SeletorEmpresa } from "@/app/(painel)/seletor-empresa";
-import { escolherEmpresaAcao, sairAcao } from "@/app/(painel)/acoes";
+import { escolherEmpresaAcao, sairAcao, verEncerradosAcao } from "@/app/(painel)/acoes";
+import { Explicacao } from "@/app/explicacao";
+import { formatarCnpj } from "@/lib/empresas/cnpj";
+import { cadastrosEncerradosNaoVistos } from "@/lib/empresas/servico";
 import { SinoNoNavegador } from "@/app/(painel)/sino-navegador";
 import { configAutenticacao } from "@/lib/autenticacao/servidor";
 import { entraNaAreaDoAdmin } from "@/lib/admin";
@@ -28,6 +31,8 @@ export default async function LayoutDoPainel({ children }: Readonly<{ children: 
   // Só o ADMIN: o certificado da plataforma (vence em 30 dias, venceu, ilegível ou faltando), com ou sem empresa ativa. O
   // aviso leva para a área do administrador (/admin/plataforma).
   const avisos = juntarAvisos(daEmpresa, await avisosDoAdminPara(usuario.papel, new Date()));
+  // Cadastros provisórios deste usuário que caíram porque outra conta comprovou a empresa (sem dizer qual).
+  const encerrados = await cadastrosEncerradosNaoVistos(banco(), usuario);
   return (
     <>
       <BarraLateral
@@ -36,7 +41,23 @@ export default async function LayoutDoPainel({ children }: Readonly<{ children: 
         usuario={<MenuUsuario usuario={usuario} areaDoAdmin={entraNaAreaDoAdmin(usuario.papel)} semLogin={configAutenticacao().loginDesligado} sair={sairAcao} />}
       />
       <div className="transition-[padding] duration-300 ease-out motion-reduce:transition-none lg:pl-64 lg:in-data-[barra=fechada]:pl-16">
-        <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pt-6 pb-24 sm:px-6 sm:pt-8 lg:px-8 lg:pt-10">{children}</main>
+        <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 pt-6 pb-24 sm:px-6 sm:pt-8 lg:px-8 lg:pt-10">
+          {encerrados.length > 0 && (
+            <form action={verEncerradosAcao} role="status" className="flex flex-wrap items-center gap-3 rounded-2xl border border-warn/40 bg-warn-soft px-5 py-3 text-sm">
+              <span className="flex-1">
+                {encerrados.map((e) => `${e.razaoSocial} (CNPJ ${formatarCnpj(e.cnpj)})`).join(", ")}: {encerrados.length > 1 ? "foram comprovadas" : "foi comprovada"} por outra conta, e o seu cadastro saiu da lista.{" "}
+                <Explicacao
+                  rotulo="Por que o cadastro da empresa saiu da minha lista?"
+                  texto="Outra pessoa assinou o termo de autorização com o e-CNPJ da empresa, emitido em nome do CPF dela, e por isso ficou como responsável. Se você também é responsável pela empresa, fale com o suporte."
+                />
+              </span>
+              <button type="submit" className="h-8 cursor-pointer rounded-full px-3 font-medium hover:bg-raised">
+                Entendi
+              </button>
+            </form>
+          )}
+          {children}
+        </main>
       </div>
     </>
   );

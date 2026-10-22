@@ -7,11 +7,11 @@ import { buscarExemplo, respostaGravada } from "@contabilizadev/nucleo/brasilapi
 import { consultasCnpj, empresas, empresaUsuarios } from "@/banco/esquema";
 import { entrarComGoogle, resolverSessao } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, SemAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { dadosDaReceita } from "@/lib/empresas/receita";
 import { removerEmpresa } from "@/lib/empresas/remocao";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -29,9 +29,9 @@ async function cadastrada() {
   const { cookie } = await entrarComGoogle(d, "ana");
   const ana = await resolverSessao(d, cookie);
   assert.ok(ana);
-  const r = await consultarParaCadastro(t.banco, ana.usuario, CNPJ, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+  const r = await consultarComDados(t.banco, ana.usuario, CNPJ, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   const acesso = await exigirAcessoEmpresa(t.banco, ana.usuario, empresaId);
   return { ana, empresaId, acesso };
 }

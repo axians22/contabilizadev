@@ -124,8 +124,9 @@ describe("abas ligadas ao portão, ao modo guiado e ao banco primeiro", () => {
 
   it("a importação inicial começa quando a empresa fica autorizada (passo 7 e página Autorização)", () => {
     const acoes = readFileSync(path.join(APP, "autorizacao", "acoes.ts"), "utf8");
-    assert.match(acoes, /await importarSeNuncaImportou\(acesso\);\s*return \{ ok: true/);
-    assert.match(acoes, /if \(liberada\(preparo\.situacao\)\) await importarSeNuncaImportou\(acesso\)/);
+    // Com o acesso de dono que o envio devolve (o provisório que comprovou vira dono no envio).
+    assert.match(acoes, /await importarSeNuncaImportou\(r\.acesso\);\s*return \{ ok: true/);
+    assert.match(acoes, /if \(liberada\(preparo\.situacao\) && !ehProvisorio\(acesso\)\) await importarSeNuncaImportou\(acesso\)/);
     assert.match(readFileSync(path.join(APP, "autorizacao", "page.tsx"), "utf8"), /if \(liberada\(situacao\)\) await importarSeNuncaImportou\(acesso\)/);
   });
 });

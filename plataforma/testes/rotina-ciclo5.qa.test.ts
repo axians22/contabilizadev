@@ -9,12 +9,12 @@ import { cnpj } from "@contabilizadev/nucleo/serpro/cliente";
 import { receitasLancadas } from "@/banco/esquema";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import type { DependenciasRotina } from "@/lib/rotina/dependencias";
 import { MENSAGENS_DA_ROTINA } from "@/lib/rotina/mensagens";
 import { lancarReceita } from "@/lib/rotina/receitas";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -32,9 +32,9 @@ const numero = new Function("v", corpo ?? "throw new Error('numero() não encont
 
 async function empresa() {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, { ana: perfil("ana@a.com", "sub-ana") }), "ana")).usuario;
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii") });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii") });
   assert.equal(r.tipo, "previa");
-  return exigirAcessoEmpresa(t.banco, usuario, await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA }));
+  return exigirAcessoEmpresa(t.banco, usuario, await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA }));
 }
 
 function dependencias() {

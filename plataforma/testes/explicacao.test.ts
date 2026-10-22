@@ -300,7 +300,7 @@ describe("ficha da empresa: cada dado com o ⓘ, o Fator R no tooltip", () => {
       assert.equal(achados.length, 1);
       return achados[0].texto;
     };
-    const previa = { dados, diagnostico, consultadaEm: "2026-10-16T12:00:00Z", token: "t" };
+    const previa = { dados, diagnostico, consultadaEm: "2026-10-16T12:00:00Z", token: "t", qsa: "confere" as const };
     const nada = async () => ({ erro: "não chamado" });
     const assistente = render(
       createElement(Assistente, { consultar: nada, cadastrar: nada, preparar: nada as never, enviar: nada, inicial: { etapa: "diagnostico", cnpj: "12.345.678/0001-95", previa, recebidaEm: Date.now(), empresaId: null, autorizacao: null, autorizadaAte: null } }),

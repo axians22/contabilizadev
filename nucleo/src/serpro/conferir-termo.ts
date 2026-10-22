@@ -9,6 +9,8 @@
 import { createHash } from "node:crypto";
 import { DOMParser } from "@xmldom/xmldom";
 import { verificarAssinatura } from "../assinatura.ts";
+import { formatarCnpj } from "../formato.ts";
+import { conferirCadeia, confiancaIcpBrasil, ErroCadeia, type Confianca } from "./cadeia-icp.ts";
 import {
   C14N,
   cnpjDoTermoValido,
@@ -43,7 +45,18 @@ export class ErroTermo extends Error {}
 export type Esperado = {
   contratante: PessoaJuridica; // a plataforma (destinatário do termo): CNPJ e razão social
   contribuinte: string; // CNPJ da empresa ativa (quem assina)
+  // CPF de quem está logado e envia o termo: tem de ser o do responsável pelo e-CNPJ (OID 2.16.76.1.3.4). Sem ele, a
+  // conferência do responsável não é feita (só o núcleo testa assim; a plataforma sempre passa).
+  cpfResponsavel?: string;
+  // Raízes e ACs aceitas para a cadeia do certificado (padrão: as oficiais da ICP-Brasil; os testes usam as de teste).
+  confianca?: Confianca;
 };
+
+// CPF mostrado só com o meio, como a Receita publica o quadro de sócios: ***.456.789-**.
+export const cpfMascarado = (cpf: string) => `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
+
+export const outroResponsavel = (cpf: string) =>
+  `Este e-CNPJ está em nome de outro responsável (CPF ${cpfMascarado(cpf)}). Quem assina o termo precisa entrar com a própria conta.`;
 
 export type TermoConferido = {
   assinadoPor: PessoaJuridica;
@@ -217,10 +230,19 @@ export function conferirTermo(xml: string, esperado: Esperado, agora: Date): Ter
     throw new ErroTermo("A assinatura do termo não confere (o termo foi alterado depois de assinado?). Assine de novo.");
   }
 
-  // Certificado: as regras da Receita que dá para conferir aqui (a cadeia até a raiz da ICP-Brasil e a revogação
-  // são conferidas por ela na hora do envio).
+  // Certificado: as regras da Receita que dá para conferir aqui, antes de gastar a chamada (a revogação é conferida por
+  // ela na hora do envio). A cadeia é conferida até uma raiz oficial da ICP-Brasil (cadeia-icp.ts): "parecer ICP-Brasil"
+  // não basta.
   if (certificado.autoassinado) throw new ErroTermo("O certificado não pode ser autoassinado: use o e-CNPJ A1 da empresa, emitido pela ICP-Brasil.");
   if (!certificado.icpBrasil) throw new ErroTermo("O certificado não tem as extensões da ICP-Brasil: use o e-CNPJ A1 da empresa.");
+  if (agora < certificado.validoDe) throw new ErroTermo("O certificado ainda não está valendo.");
+  if (agora >= certificado.validoAte) throw new ErroTermo("O certificado está vencido. Renove o e-CNPJ e assine de novo.");
+  try {
+    conferirCadeia(certificado.certificadoBase64, esperado.confianca ?? confiancaIcpBrasil(), agora);
+  } catch (erro) {
+    if (erro instanceof ErroCadeia) throw new ErroTermo(`${erro.message} Use o e-CNPJ A1 da empresa, emitido pela ICP-Brasil.`);
+    throw erro;
+  }
   if (certificado.titular.tipo !== "PJ" || certificado.titular.numero !== assinadoPor.numero) {
     throw new ErroTermo("Quem assina no termo precisa ser o titular do certificado (o mesmo CNPJ).");
   }
@@ -230,8 +252,15 @@ export function conferirTermo(xml: string, esperado: Esperado, agora: Date): Ter
   } catch (erro) {
     throw new ErroTermo((erro as Error).message);
   }
-  if (agora < certificado.validoDe) throw new ErroTermo("O certificado ainda não está valendo.");
-  if (agora >= certificado.validoAte) throw new ErroTermo("O certificado está vencido. Renove o e-CNPJ e assine de novo.");
+  // O CNPJ tem de vir do campo da ICP-Brasil (OID 2.16.76.1.3.3), não só do nome do certificado.
+  if (!certificado.cnpjIcp) throw new ErroTermo("O certificado não traz o CNPJ no campo da ICP-Brasil: use o e-CNPJ A1 da empresa.");
+  if (certificado.cnpjIcp !== esperado.contribuinte) {
+    throw new ErroTermo(`Este e-CNPJ é do CNPJ ${formatarCnpj(certificado.cnpjIcp)}, não da empresa. Use o e-CNPJ A1 da própria empresa.`);
+  }
+  if (esperado.cpfResponsavel !== undefined) {
+    if (!certificado.responsavel) throw new ErroTermo("O certificado não traz o CPF do responsável pelo e-CNPJ: use o e-CNPJ A1 da empresa, emitido pela ICP-Brasil.");
+    if (certificado.responsavel.cpf !== esperado.cpfResponsavel) throw new ErroTermo(outroResponsavel(certificado.responsavel.cpf));
+  }
 
   // Datas, no dia de Brasília.
   const hoje = dataEmBrasilia(agora);

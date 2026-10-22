@@ -231,7 +231,9 @@ describe("resolverSessao: o cookie é uma alegação, o banco decide", () => {
   it("o usuário resolvido não carrega mais que o necessário", async () => {
     const r = await entrarComGoogle(deps(t.banco, ANA), "tok-ana");
     const s = await resolverSessao(deps(t.banco), r.cookie);
-    assert.deepEqual(Object.keys(s!.usuario).sort(), ["avatarUrl", "email", "id", "nome", "papel"]);
+    // Dos dados pessoais, só se faltam (nunca CPF, nascimento, telefone ou endereço na sessão).
+    assert.deepEqual(Object.keys(s!.usuario).sort(), ["avatarUrl", "dadosPendentes", "email", "id", "nome", "papel"]);
+    assert.equal(s!.usuario.dadosPendentes, true);
   });
 });
 

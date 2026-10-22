@@ -24,7 +24,7 @@ const HOJE = "2026-10-16";
 
 function previa(exemplo: Exemplo): PreviaDoAssistente {
   const dados = lerRespostaCnpj(respostaGravada(exemplo));
-  return { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: CONSULTADA_EM, token: `token-${exemplo}` };
+  return { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: CONSULTADA_EM, token: `token-${exemplo}`, qsa: "confere" };
 }
 const aplicar = (estado: EstadoAssistente, ...eventos: EventoAssistente[]) => eventos.reduce(reduzir, estado);
 const continuar: EventoAssistente = { tipo: "continuar", agora: RECEBIDA_EM };

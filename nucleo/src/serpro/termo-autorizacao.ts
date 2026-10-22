@@ -17,7 +17,7 @@
 //
 // As mensagens de erro daqui chegam à tela do cliente: nunca citam o fornecedor (a fonte é a Receita Federal).
 import forge from "node-forge";
-import { assinaturaDoTermo, documentoDoTermo, ErroCertificado, limparTexto, OID_CNPJ, OID_PF, signedInfoDoTermo, type InfoCertificado, type Pessoa, type Politica } from "./termo-xml.ts";
+import { assinaturaDoTermo, documentoDoTermo, ErroCertificado, limparTexto, OID_CNPJ, OID_PF, OID_RESPONSAVEL, signedInfoDoTermo, type InfoCertificado, type Pessoa, type Politica } from "./termo-xml.ts";
 
 export * from "./termo-xml.ts";
 
@@ -100,8 +100,18 @@ function textoDoCampo(nome: forge.pki.Certificate["subject"], campo: string): st
   return limparTexto(valor);
 }
 
+// Responsável pelo e-CNPJ (OID 2.16.76.1.3.4): nascimento nas posições 1 a 8 (DDMMAAAA) e CPF nas 9 a 19.
+function responsavelDo(nomes: Record<string, string>): InfoCertificado["responsavel"] {
+  const valor = nomes[OID_RESPONSAVEL];
+  if (!valor || valor.length < 19) return null;
+  const nascimento = valor.slice(0, 8);
+  const cpf = valor.slice(8, 19);
+  return /^\d{11}$/.test(cpf) && !/^0{11}$/.test(cpf) ? { cpf, nascimento } : null;
+}
+
 function informacoes(cert: forge.pki.Certificate): InfoCertificado {
   const nomes = outrosNomes(cert);
+  const cnpjIcp = nomes[OID_CNPJ]?.replace(/[^0-9A-Za-z]/g, "").toUpperCase() ?? null;
   const der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
   return {
     titular: titularDo(cert, nomes),
@@ -113,6 +123,8 @@ function informacoes(cert: forge.pki.Certificate): InfoCertificado {
     emissor: textoDoCampo(cert.issuer, "CN"),
     bitsChave: (cert.publicKey as forge.pki.rsa.PublicKey).n?.bitLength() ?? 0,
     certificadoBase64: forge.util.encode64(der),
+    cnpjIcp: cnpjIcp && CNPJ.test(cnpjIcp) ? cnpjIcp : null,
+    responsavel: responsavelDo(nomes),
   };
 }
 

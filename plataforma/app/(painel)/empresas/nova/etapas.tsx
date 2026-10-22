@@ -6,7 +6,8 @@ import { dataBr, formatarCnae, formatarNatureza } from "@contabilizadev/nucleo/f
 import { botaoLink, botaoPrimario, Campo, rotulo } from "@/app/ui";
 import { Explicacao, ExplicacaoDoTermo } from "@/app/explicacao";
 import { explicarAtividade, ListaDeNotas, perguntaDaAtividade } from "@/app/(painel)/empresa/ficha";
-import { diaDaConsulta, exemploFatorR, explicarNatureza, explicarSituacao, orientacoes, resumoSimples, type Explicacao as Situacao, type PreviaDoAssistente } from "@/lib/empresas/assistente";
+import { aguardaComprovacao, diaDaConsulta, exemploFatorR, explicarNatureza, explicarSituacao, orientacoes, resumoSimples, type Explicacao as Situacao, type PreviaDoAssistente } from "@/lib/empresas/assistente";
+import { QSA_INDISPONIVEL } from "@/lib/empresas/qsa";
 import { formatarCnpj, validarCnpj } from "@/lib/empresas/cnpj";
 import type { Termo } from "@/lib/empresas/glossario";
 import { porcentagem } from "@/lib/empresas/glossario";
@@ -127,7 +128,14 @@ export function EtapaCnpj({
 
 const data = (d: string | null | undefined) => (d ? dataBr(d) : "Não informada");
 
-export function EtapaEmpresa({ dados }: { dados: DadosCnpj }) {
+// O resultado da conferência com o quadro de sócios: quem não está no quadro nem chega aqui (a pesquisa é recusada).
+function QuadroDeSocios({ qsa }: { qsa: PreviaDoAssistente["qsa"] }) {
+  if (qsa === "confere") return <Estado e={{ ok: true, curto: "Você está no quadro de sócios da empresa." }} />;
+  if (qsa === "sem-qsa") return <Estado e={{ ok: false, curto: QSA_INDISPONIVEL.curto, titulo: QSA_INDISPONIVEL.titulo, texto: QSA_INDISPONIVEL.texto }} />;
+  return null;
+}
+
+export function EtapaEmpresa({ dados, qsa }: { dados: DadosCnpj; qsa: PreviaDoAssistente["qsa"] }) {
   const natureza = dados.naturezaJuridica;
   const endereco = enderecoEmLinha(dados.endereco, dados.municipio, dados.uf);
   return (
@@ -165,6 +173,11 @@ export function EtapaEmpresa({ dados }: { dados: DadosCnpj }) {
         </Dado>
         <Dado nome="Endereço" termo="endereco" valor={endereco ?? "Não informado"} />
         <Dado nome="Data de abertura" termo="abertura" valor={data(dados.dataInicioAtividade)} />
+        {dados.socios.length === 0 && qsa === "sem-qsa" && (
+          <Dado nome="Sócios e administradores" termo="socios" valor="Não publicado pela Receita Federal">
+            <QuadroDeSocios qsa={qsa} />
+          </Dado>
+        )}
         {dados.socios.length > 0 && (
           <Dado
             nome="Sócios e administradores"
@@ -180,6 +193,7 @@ export function EtapaEmpresa({ dados }: { dados: DadosCnpj }) {
               </ul>
             }
           >
+            <QuadroDeSocios qsa={qsa} />
             <span className="text-sm text-muted">
               <ExplicacaoDoTermo termo="proLabore" gatilho="Pró-labore e Fator R" rotulo="Pró-labore e Fator R: o que é o pró-labore?" />
             </span>
@@ -326,13 +340,23 @@ export function EtapaDiagnostico({ previa, cadastrada = false }: { previa: Previ
       </div>
       {d.observacoes.length > 0 && <ListaDeNotas notas={d.observacoes} aviso />}
       <Frase>
-        {cadastrada ? (
+        {!aguardaComprovacao(previa) ? (
+          cadastrada ? (
+            <>
+              A <b className="font-semibold">{previa.dados.razaoSocial}</b> já está cadastrada e você é o dono dela.
+            </>
+          ) : (
+            <>
+              Ao confirmar, cadastramos a <b className="font-semibold">{previa.dados.razaoSocial}</b> e você fica como dono dela.
+            </>
+          )
+        ) : cadastrada ? (
           <>
-            A <b className="font-semibold">{previa.dados.razaoSocial}</b> já está cadastrada e você é o dono dela.
+            A <b className="font-semibold">{previa.dados.razaoSocial}</b> já está cadastrada e aguarda a comprovação pelo termo.
           </>
         ) : (
           <>
-            Ao confirmar, cadastramos a <b className="font-semibold">{previa.dados.razaoSocial}</b> e você fica como dono dela.
+            Ao confirmar, cadastramos a <b className="font-semibold">{previa.dados.razaoSocial}</b>; ela fica aguardando a comprovação pelo termo de autorização.
           </>
         )}
       </Frase>
@@ -381,6 +405,25 @@ export function EtapaProximos({ previa, cadastrada, aoRecomecar }: { previa: Pre
     ...(previa.diagnostico.dependeFatorR ? [`Avisa quando o Fator R chegar perto de ${LIMITE}, com a sugestão de pró-labore.`] : []),
     "Mostra as guias, os prazos e os avisos da Receita Federal no painel.",
   ];
+  if (aguardaComprovacao(previa)) {
+    return (
+      <>
+        <p className="text-sm leading-relaxed">
+          A <b className="font-semibold">{previa.dados.razaoSocial}</b> está cadastrada e aguarda comprovação.{" "}
+          <Explicacao
+            rotulo="Por que a empresa aguarda comprovação?"
+            texto={[
+              "Para ninguém ver os dados de uma empresa que não é sua, o conteúdo só abre depois que o termo de autorização é assinado com o e-CNPJ A1 da empresa, emitido em nome do seu CPF.",
+              "Até lá, nenhum dado da empresa aparece e nenhuma consulta é feita em nome dela.",
+            ]}
+          />
+        </p>
+        <p className="text-sm leading-relaxed">
+          A seguir, assine o termo para comprovar e liberar a plataforma. <ExplicacaoDoTermo termo="termo" />
+        </p>
+      </>
+    );
+  }
   return (
     <>
       <p className="text-sm leading-relaxed">

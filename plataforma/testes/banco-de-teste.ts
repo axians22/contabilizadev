@@ -56,7 +56,7 @@ export async function prepararBancoDeTeste(): Promise<BancoDeTeste> {
   return {
     banco,
     limpar: async () => {
-      await conexao`truncate usuarios, empresas, empresa_usuarios, sessoes, consultas_cnpj, termos_autorizacao, serpro_chamadas, pgdasd_declaracoes, pgdasd_das, pgdasd_extratos, pagamentos, defis, situacoes_fiscais, historico_consultas, importacoes, receitas_lancadas, meses_sem_receita, prolabores, pgdasd_envios, dctfweb_envios, guias, cotacoes_ptax, esocial_config, esocial_envios, esocial_eventos, esocial_pedidos, esocial_chamadas, caixa_postal, defis_dados, plataforma_segredos restart identity cascade`;
+      await conexao`truncate usuarios, empresas, empresa_usuarios, sessoes, consultas_cnpj, termos_autorizacao, serpro_chamadas, pgdasd_declaracoes, pgdasd_das, pgdasd_extratos, pagamentos, defis, situacoes_fiscais, historico_consultas, importacoes, receitas_lancadas, meses_sem_receita, prolabores, pgdasd_envios, dctfweb_envios, guias, cotacoes_ptax, esocial_config, esocial_envios, esocial_eventos, esocial_pedidos, esocial_chamadas, caixa_postal, defis_dados, plataforma_segredos, dados_pessoais, ceps, cnpjs_consultados, cadastros_encerrados, envios_termo restart identity cascade`;
     },
     fechar: () => conexao.end(),
   };

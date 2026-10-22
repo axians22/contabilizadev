@@ -61,9 +61,14 @@ export const empresas = pgTable(
   (t) => [check("empresas_cnpj_formato", sql`${t.cnpj} ~ '^[0-9A-Z]{12}[0-9]{2}$'`)],
 );
 
-// Papel do usuário dentro de uma empresa: o DONO administra a empresa; o MEMBRO usa.
-export const PAPEIS_NA_EMPRESA = ["DONO", "MEMBRO"] as const;
+// Papel do usuário dentro de uma empresa: o DONO administra a empresa; o MEMBRO usa. PROVISORIO é o cadastro que ainda
+// aguarda comprovação (21/10/2026): o usuário bateu com o quadro de sócios, mas só vira DONO quando assina o termo com o
+// e-CNPJ em nome dele. O provisório não é acesso: lib/empresas/acesso.ts recusa ler ou gravar qualquer dado da empresa
+// com ele (só o termo de autorização o aceita), e vários provisórios do mesmo CNPJ não veem nada uns dos outros.
+export const PAPEIS_NA_EMPRESA = ["DONO", "MEMBRO", "PROVISORIO"] as const;
 export type PapelNaEmpresa = (typeof PAPEIS_NA_EMPRESA)[number];
+// Os papéis que dão acesso ao conteúdo da empresa (comprovados).
+export type PapelComprovado = Exclude<PapelNaEmpresa, "PROVISORIO">;
 
 // Vínculo usuário-empresa: é a única coisa que dá acesso aos dados de uma empresa (o ADMIN da plataforma também
 // precisa dele: administrar usuários não é ler o dado fiscal de um cliente).
@@ -78,8 +83,77 @@ export const empresaUsuarios = pgTable(
   (t) => [
     primaryKey({ columns: [t.empresaId, t.usuarioId] }),
     index("empresa_usuarios_usuario").on(t.usuarioId),
-    check("empresa_usuarios_papel_valido", sql`${t.papel} in ('DONO', 'MEMBRO')`),
+    check("empresa_usuarios_papel_valido", sql`${t.papel} in ('DONO', 'MEMBRO', 'PROVISORIO')`),
   ],
+);
+
+// Dados pessoais do usuário ("Seus dados", preenchidos no primeiro login; 21/10/2026). Ficam fora da tabela usuarios para
+// nenhuma consulta de gestão (área do administrador) trazer CPF, nascimento, telefone ou endereço por engano: só
+// lib/usuarios/dados-pessoais.ts lê esta tabela, e só para o próprio usuário. Um CPF por conta (único). O aceite guarda a
+// versão do texto dos termos e da privacidade e quando foi aceito; versão nova pede o aceite de novo.
+export const dadosPessoais = pgTable(
+  "dados_pessoais",
+  {
+    usuarioId: uuid("usuario_id").primaryKey().references(() => usuarios.id, { onDelete: "cascade" }),
+    nomeCompleto: text("nome_completo").notNull(),
+    cpf: text("cpf").notNull().unique(), // 11 dígitos
+    dataNascimento: date("data_nascimento", { mode: "string" }).notNull(),
+    whatsapp: text("whatsapp").notNull(), // +55DDNNNNNNNNN
+    cep: text("cep").notNull(), // 8 dígitos
+    logradouro: text("logradouro").notNull(),
+    numero: text("numero").notNull(),
+    complemento: text("complemento"),
+    bairro: text("bairro").notNull(),
+    cidade: text("cidade").notNull(),
+    uf: text("uf").notNull(),
+    termosVersao: text("termos_versao").notNull(),
+    termosAceitosEm: timestamp("termos_aceitos_em", { withTimezone: true }).notNull(),
+    criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+    atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("dados_pessoais_cpf_formato", sql`${t.cpf} ~ '^[0-9]{11}$'`),
+    check("dados_pessoais_cep_formato", sql`${t.cep} ~ '^[0-9]{8}$'`),
+    check("dados_pessoais_whatsapp_formato", sql`${t.whatsapp} ~ '^[+]55[0-9]{10,11}$'`),
+  ],
+);
+
+// CEPs consultados (dado público, igual para todos): banco primeiro, a consulta externa só para CEP que ainda não está
+// aqui. CEP que a consulta não achou também fica (encontrado = false), para não perguntar de novo a cada digitação; é
+// perguntado outra vez depois de um tempo (lib/usuarios/cep.ts).
+export const ceps = pgTable("ceps", {
+  cep: text("cep").primaryKey(),
+  encontrado: boolean("encontrado").notNull(),
+  logradouro: text("logradouro"),
+  bairro: text("bairro"),
+  cidade: text("cidade"),
+  uf: text("uf"),
+  consultadoEm: timestamp("consultado_em", { withTimezone: true }).notNull(),
+});
+
+// Consulta pública de CNPJ para o cadastro (dado público da Receita, igual para todos, sem vínculo com usuário nem
+// empresa): banco primeiro no cadastro, inclusive para conferir o quadro de sócios. Fica separada de consultas_cnpj (que é
+// dado da empresa, pela porta de acesso) para o cadastro provisório de um usuário não gravar nada na empresa que outro
+// provisório do mesmo CNPJ possa ver.
+export const cnpjsConsultados = pgTable("cnpjs_consultados", {
+  cnpj: text("cnpj").primaryKey(),
+  dados: jsonb("dados").$type<DadosCnpj>().notNull(),
+  consultadoEm: timestamp("consultado_em", { withTimezone: true }).notNull(),
+});
+
+// Cadastros provisórios encerrados porque outra conta comprovou a empresa (assinou o termo com o e-CNPJ em nome dela). É
+// do usuário, não da empresa (o vínculo dele já caiu): diz só o CNPJ e a razão social, nunca quem comprovou.
+export const cadastrosEncerrados = pgTable(
+  "cadastros_encerrados",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    usuarioId: uuid("usuario_id").notNull().references(() => usuarios.id, { onDelete: "cascade" }),
+    cnpj: text("cnpj").notNull(),
+    razaoSocial: text("razao_social").notNull(),
+    encerradoEm: timestamp("encerrado_em", { withTimezone: true }).notNull(),
+    vistoEm: timestamp("visto_em", { withTimezone: true }),
+  },
+  (t) => [index("cadastros_encerrados_usuario").on(t.usuarioId)],
 );
 
 // Sessões de login. O navegador guarda só o token (cookie httpOnly e assinado); aqui fica o hash SHA-256 dele,
@@ -160,6 +234,20 @@ export const termosAutorizacao = pgTable(
     index("termos_autorizacao_empresa").on(t.empresaId, t.enviadoEm),
     uniqueIndex("termos_autorizacao_um_ativo").on(t.empresaId).where(sql`${t.substituidoEm} is null`),
   ],
+);
+
+// Envios do termo de autorização que chegaram a ir para a Receita (passaram na conferência do servidor): o limite por
+// empresa (lib/termo/termo.ts) conta estas linhas. Gravadas antes do envio e fora da transação dele, para uma falha não
+// apagar a tentativa. Só a contagem lê esta tabela; ninguém a vê na tela.
+export const enviosTermo = pgTable(
+  "envios_termo",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    empresaId: uuid("empresa_id").notNull().references(() => empresas.id, { onDelete: "cascade" }),
+    usuarioId: uuid("usuario_id").references(() => usuarios.id, { onDelete: "set null" }),
+    enviadoEm: timestamp("enviado_em", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("envios_termo_empresa_data").on(t.empresaId, t.enviadoEm)],
 );
 
 // Registro interno de toda chamada ao Serpro: o gasto da PLATAFORMA com o contrato dela (finalidade, resposta e custo).
@@ -715,4 +803,18 @@ export const cotacoesPtax = pgTable(
 // serpro_chamadas é o registro interno do gasto da plataforma com o contrato do Serpro (custo e limite), não dado de um
 // cliente nem cobrança dele; por isso o empresa_id é opcional e a remoção da empresa só anonimiza a linha. cotacoes_ptax é
 // dado público do Banco Central (a cotação de uma moeda num dia), igual para todas as empresas.
-export const TABELAS_DA_PLATAFORMA = ["instalacao", "usuarios", "empresas", "empresa_usuarios", "sessoes", "serpro_chamadas", "cotacoes_ptax", "plataforma_segredos"];
+// dados_pessoais e cadastros_encerrados são do usuário (não de uma empresa); ceps e cnpjs_consultados são dado público.
+export const TABELAS_DA_PLATAFORMA = [
+  "instalacao",
+  "usuarios",
+  "empresas",
+  "empresa_usuarios",
+  "sessoes",
+  "serpro_chamadas",
+  "cotacoes_ptax",
+  "plataforma_segredos",
+  "dados_pessoais",
+  "ceps",
+  "cnpjs_consultados",
+  "cadastros_encerrados",
+];

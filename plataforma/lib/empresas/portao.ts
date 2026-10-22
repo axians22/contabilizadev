@@ -1,13 +1,16 @@
 // Acesso em camadas (plano.txt, "Modelo"): quem entra vê o site e todas as abas da barra lateral, mas o conteúdo de
-// uma aba de empresa só sai por este portão, que decide entre três caminhos:
+// uma aba de empresa só sai por este portão, que decide entre quatro caminhos:
 //   1. sem empresa ativa      -> "sem-empresa": a aba explica o que vai ter e leva ao cadastro;
-//   2. empresa sem plano ativo -> "sem-plano":  a aba explica e leva à escolha do plano;
-//   3. liberado               -> o AcessoEmpresa (lib/empresas/acesso.ts), único jeito de ler dado da empresa.
+//   2. cadastro provisório    -> "aguardando": a empresa aguarda comprovação; a aba explica e leva à Autorização (o
+//                                termo assinado com o e-CNPJ é a prova). Só a página Autorização usa o `termo` (o
+//                                AcessoProvisorio, que não lê dado nenhum da empresa);
+//   3. empresa sem plano ativo -> "sem-plano":  a aba explica e leva à escolha do plano;
+//   4. liberado               -> o AcessoEmpresa (lib/empresas/acesso.ts), único jeito de ler dado da empresa.
 // O portão não é só visual: o AcessoEmpresa só é entregue no caminho liberado, então sem empresa (ou sem plano) não
 // há como ler dado de empresa nenhuma. O termo de autorização (autorizada x modo guiado) é outra camada, que vem
 // depois do portão e não muda a decisão dele.
 import type { Banco } from "@/banco";
-import { exigirAcessoEmpresa, SemAcessoEmpresa, type AcessoEmpresa } from "./acesso";
+import { ehProvisorio, exigirAcessoAoTermo, exigirAcessoEmpresa, SemAcessoEmpresa, type AcessoAoTermo, type AcessoEmpresa, type AcessoProvisorio } from "./acesso";
 import type { EmpresaDoUsuario } from "./servico";
 
 // PONTO ÚNICO DA EXIGÊNCIA DE PLANO. Hoje sempre libera: a cobrança da assinatura chega na Parte 9 (plano.txt, passo
@@ -22,6 +25,7 @@ export type OpcoesDoPortao = { planoAtivo?: ConferirPlano };
 
 export type Portao =
   | { estado: "sem-empresa" }
+  | { estado: "aguardando"; empresa: EmpresaDoUsuario; termo: AcessoProvisorio }
   | { estado: "sem-plano"; empresa: EmpresaDoUsuario }
   | { estado: "liberado"; empresa: EmpresaDoUsuario; acesso: AcessoEmpresa };
 
@@ -39,12 +43,23 @@ export async function exigirAcessoAoConteudo(banco: Banco, usuario: { id: string
   return acesso;
 }
 
+// Para as ações do termo de autorização (assinar e preparar): o provisório passa (é o que ele pode fazer); o comprovado,
+// como no conteúdo, precisa também do plano.
+export async function exigirAcessoParaOTermo(banco: Banco, usuario: { id: string }, empresaId: string | null | undefined, opcoes: OpcoesDoPortao = {}): Promise<AcessoAoTermo> {
+  const acesso = await exigirAcessoAoTermo(banco, usuario, empresaId);
+  if (ehProvisorio(acesso)) return acesso;
+  if (!(await (opcoes.planoAtivo ?? planoAtivo)({ id: acesso.empresaId }))) throw new SemPlanoAtivo();
+  return acesso;
+}
+
 // Para as páginas: decide pela empresa ativa da sessão (que já vem conferida contra o vínculo, ver escolherAtiva).
 // O vínculo é conferido de novo aqui, no banco, antes de olhar o plano: o plano é da empresa, e só quem tem acesso a
 // ela pode saber dele.
 export async function abrirPortao(banco: Banco, usuario: { id: string }, empresaAtiva: EmpresaDoUsuario | null, opcoes: OpcoesDoPortao = {}): Promise<Portao> {
   if (!empresaAtiva) return { estado: "sem-empresa" };
   try {
+    const vinculo = await exigirAcessoAoTermo(banco, usuario, empresaAtiva.id);
+    if (ehProvisorio(vinculo)) return { estado: "aguardando", empresa: { ...empresaAtiva, papel: "PROVISORIO" }, termo: vinculo };
     const acesso = await exigirAcessoAoConteudo(banco, usuario, empresaAtiva.id, opcoes);
     return { estado: "liberado", empresa: empresaAtiva, acesso };
   } catch (erro) {

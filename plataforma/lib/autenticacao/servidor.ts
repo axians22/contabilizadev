@@ -8,6 +8,7 @@ import { cache } from "react";
 import { banco } from "@/banco";
 import { AREA_DO_ADMIN, entraNaAreaDoAdmin, inicioDoAdmin, podeVerNoAdmin, type HrefDoAdmin } from "@/lib/admin";
 import { empresasDaSessao, type EmpresaDoUsuario } from "@/lib/empresas/servico";
+import { exigeSeusDados, PREENCHA_SEUS_DADOS, ROTA_SEUS_DADOS } from "@/lib/usuarios/portao-dos-dados";
 import { lerConfigAutenticacao, type ConfigAutenticacao } from "./config";
 import { nomeDoCookie, opcoesDoCookie } from "./cookie";
 import { criarVerificadorGoogle } from "./google";
@@ -54,7 +55,8 @@ export const sessaoAtual = cache(async (): Promise<SessaoAtual | null> => {
   return { ...sessao, ...(await empresasDaSessao(deps.banco, sessao)) };
 });
 
-export async function exigirSessao(): Promise<SessaoAtual> {
+// A sessão, sem o portão do primeiro login: só para a tela "Seus dados" (e os termos), as ações dela e sair.
+export async function exigirSessaoSemDados(): Promise<SessaoAtual> {
   const sessao = await sessaoAtual();
   // Com o login desligado (desenvolvimento) não há tela de login: um cookie que não vale mais (banco recriado,
   // sessão apagada) vai para a sessão local, que grava um cookie novo e volta.
@@ -62,13 +64,22 @@ export async function exigirSessao(): Promise<SessaoAtual> {
   return sessao;
 }
 
+// A sessão de toda página, layout e ação. Usuário comum sem "Seus dados" vai para a tela de dados antes de qualquer coisa
+// (lib/usuarios/portao-dos-dados.ts); em server action, o redirect também vale (a ação não roda).
+export async function exigirSessao(): Promise<SessaoAtual> {
+  const sessao = await exigirSessaoSemDados();
+  if (exigeSeusDados(sessao.usuario)) redirect(ROTA_SEUS_DADOS);
+  return sessao;
+}
+
 // Área do administrador (/admin, lib/admin.ts): confere a sessão e se o papel vê a página `href` (MANAGER só os
 // usuários; ADMIN tudo; COMMON_USER nada). Para quem não vê, a página simplesmente não existe (404, sem dizer o que há).
 // Exceção: quem entra na área mas não vê a visão geral (MANAGER) e abre /admin vai para a primeira página que vê.
 // Cada página e ação chama com o próprio endereço: o layout não roda de novo em toda navegação, então não pode ser a
-// única barreira.
+// única barreira. Sem o portão do primeiro login: a área é só de MANAGER e ADMIN, que não passam por ele, e o
+// COMMON_USER recebe 404 (não é mandado para "Seus dados", que diria que a página existe).
 export async function exigirAreaDoAdmin(href: HrefDoAdmin): Promise<SessaoAtual> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirSessaoSemDados();
   const { papel } = sessao.usuario;
   if (!podeVerNoAdmin(papel, href)) {
     const inicio = inicioDoAdmin(papel);
@@ -80,16 +91,18 @@ export async function exigirAreaDoAdmin(href: HrefDoAdmin): Promise<SessaoAtual>
 
 // O layout da área: só confere a entrada (MANAGER e ADMIN); COMMON_USER recebe 404. Cada página confere a sua.
 export async function exigirEntradaNaAreaDoAdmin(): Promise<SessaoAtual> {
-  const sessao = await exigirSessao();
+  const sessao = await exigirSessaoSemDados();
   if (!entraNaAreaDoAdmin(sessao.usuario.papel)) notFound();
   return sessao;
 }
 
-// Route handlers: 401 em JSON sem sessão, em vez do redirecionamento das páginas.
+// Route handlers: 401 em JSON sem sessão, em vez do redirecionamento das páginas; 403 para o usuário comum sem
+// "Seus dados" (o portão do primeiro login).
 export function comSessao<C>(tratar: (sessao: SessaoAtual, requisicao: Request, contexto: C) => Promise<Response>) {
   return async (requisicao: Request, contexto: C) => {
     const sessao = await sessaoAtual();
     if (!sessao) return Response.json({ erro: "Entre para continuar." }, { status: 401 });
+    if (exigeSeusDados(sessao.usuario)) return Response.json({ erro: PREENCHA_SEUS_DADOS, destino: ROTA_SEUS_DADOS }, { status: 403 });
     return tratar(sessao, requisicao, contexto);
   };
 }

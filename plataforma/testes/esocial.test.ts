@@ -41,7 +41,6 @@ import { assinanteDoArquivo, type Assinante } from "@/lib/assinador/assinador";
 import { cofreDoNavegador } from "@/lib/assinador/cofre";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { removerEmpresa } from "@/lib/empresas/remocao";
 import { importarEventos, importarIdentificadores, importarPelaPlataforma, prepararImportacao, salvarConfigEsocial, type DadosDaConfig } from "@/lib/esocial/configuracao";
 import {
@@ -65,6 +64,7 @@ import { MENSAGENS_DA_ROTINA } from "@/lib/rotina/mensagens";
 import { informarProLabore } from "@/lib/rotina/receitas";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -103,9 +103,9 @@ const navegador = (certificado = E_CNPJ, numero = SUPORTE, agora = AGORA): Promi
 async function empresa(quem: "ana" | "beto" = "ana", exemplo: "ti-anexo-iii" | "ti-fator-r" = "ti-anexo-iii") {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), quem)).usuario;
   const numero = exemplo === "ti-anexo-iii" ? "98.765.432/0001-98" : "12.345.678/0001-95";
-  const r = await consultarParaCadastro(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
+  const r = await consultarComDados(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   return { usuario, empresaId, acesso: await exigirAcessoEmpresa(t.banco, usuario, empresaId) };
 }
 

@@ -19,7 +19,7 @@ function tela(dados: DadosCnpj, etapa: IdEtapa): string {
   const estado: EstadoAssistente = {
     etapa,
     cnpj: "12.345.678/0001-95",
-    previa: { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: `${HOJE}T12:00:00.000Z`, token: "t" },
+    previa: { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: `${HOJE}T12:00:00.000Z`, token: "t", qsa: "confere" as const },
     recebidaEm: Date.now(),
     empresaId: null,
     autorizacao: null,

@@ -7,7 +7,7 @@ import { encerrarSessao } from "@/lib/autenticacao/servico";
 import { destinoAoSair } from "@/lib/autenticacao/rotas";
 import { apagarCookieDeSessao, configAutenticacao, dependenciasDeLogin, exigirSessao, lerCookieDeSessao } from "@/lib/autenticacao/servidor";
 import { SemAcessoEmpresa } from "@/lib/empresas/acesso";
-import { definirEmpresaAtiva } from "@/lib/empresas/servico";
+import { definirEmpresaAtiva, marcarEncerradosVistos } from "@/lib/empresas/servico";
 
 // Sair: apaga a sessão no banco (o mesmo cookie não serve mais, nem copiado) e o cookie. Com o login desligado
 // não há tela de login: volta ao painel, que abre uma sessão nova da conta de desenvolvimento.
@@ -26,5 +26,12 @@ export async function escolherEmpresaAcao(dados: FormData): Promise<{ erro: stri
     if (erro instanceof SemAcessoEmpresa) return { erro: erro.message };
     throw erro;
   }
+  refresh();
+}
+
+// "Entendi" no aviso de cadastro provisório encerrado (outra conta comprovou a empresa): some do topo.
+export async function verEncerradosAcao(): Promise<void> {
+  const sessao = await exigirSessao();
+  await marcarEncerradosVistos(banco(), sessao.usuario, new Date());
   refresh();
 }

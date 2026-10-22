@@ -18,7 +18,7 @@ import {
 
 const LIMITE = VALIDADE_DA_PREVIA_MS - FOLGA_DA_PREVIA_MS;
 const dados = lerRespostaCnpj(respostaGravada("ti-fator-r"));
-const p = { dados, diagnostico: diagnosticar(dados, "2026-10-17"), consultadaEm: "2026-10-17T12:00:00.000Z", token: "t" };
+const p = { dados, diagnostico: diagnosticar(dados, "2026-10-17"), consultadaEm: "2026-10-17T12:00:00.000Z", token: "t", qsa: "confere" as const };
 const aplicar = (e: EstadoAssistente, ...ev: EventoAssistente[]) => ev.reduce(reduzir, e);
 
 describe("QA: bordas de previaVencida", () => {

@@ -12,6 +12,8 @@ As funções não gravam nada; devolvem o resultado para a plataforma guardar (n
   razão social, CNAEs, Simples/MEI, sócios, natureza jurídica e situação cadastral. 404/400, 429, 5xx, falha de rede e
   tempo esgotado viram `ErroConsultaCnpj` com mensagem para o cliente. Respostas gravadas em `brasilapi/exemplos/`
   (Banco do Brasil real, o resto fictício) e o fetch falso em `brasilapi/exemplos.ts`.
+- `brasilapi/cep.ts` — consulta pública de CEP (para "Seus dados"), com o fetch por parâmetro; o quadro de sócios da
+  consulta de CNPJ traz o CPF mascarado (`documento`) e o representante legal, para a conferência do cadastro.
 - `diagnostico.ts` — diagnóstico da empresa pelos dados da Receita, sobre o CNAE principal e os secundários: anexo (III,
   ou III ou V pelo Fator R, com a explicação em linguagem simples) ou "ainda não atendemos" com os motivos (CNAE fora do
   escopo, não optante do Simples, MEI, CNPJ não ativo, natureza jurídica não atendida).
@@ -22,7 +24,9 @@ As funções não gravam nada; devolvem o resultado para a plataforma guardar (n
   leitura do certificado. A parte sem node-forge fica em `serpro/termo-xml.ts` (reexportada): textos oficiais, montagem
   na forma canônica, conferência do e-CNPJ A1 (política ICP-Brasil, CNPJ, validade, chave de 2048 bits ou mais) e
   assinatura XMLDSig enveloped com qualquer chave (`assinarTermoCom`, assíncrona, para a chave do WebCrypto).
-  `serpro/conferir-termo.ts` confere no servidor o termo assinado, nó a nó; `serpro/autentica-procurador.ts` envia
+  `serpro/conferir-termo.ts` confere no servidor o termo assinado, nó a nó, com a cadeia até a raiz da ICP-Brasil
+  (`serpro/cadeia-icp.ts`, raízes e ACs oficiais em `nucleo/certificados/icp-brasil`), o CNPJ do OID 2.16.76.1.3.3 e o CPF
+  do responsável do OID 2.16.76.1.3.4; `serpro/autentica-procurador.ts` envia
   (`AUTENTICAPROCURADOR/ENVIOXMLASSINADO81`), lê o token (200 e 304) e classifica as recusas em motivos.
 - `serpro/pgdasd-consultas.ts` — histórico do PGDAS-D: lista de declarações e DAS de um ano (`CONSDECLARACAO13`) e o
   extrato de um DAS (`CONSEXTRATO16`); a declaração vigente do mês (a última retificadora) e o DAS cujo extrato a mostra.

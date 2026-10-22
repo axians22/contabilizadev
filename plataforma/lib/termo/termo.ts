@@ -19,11 +19,24 @@ import { eq, isNull } from "drizzle-orm";
 import { isoDeCompacta } from "@contabilizadev/nucleo/formato";
 import { enviarTermo, ErroAutenticaProcurador, type MotivoRecusa, type TokenProcurador } from "@contabilizadev/nucleo/serpro/autentica-procurador";
 import { cnpj, type ClienteSerpro, type Contexto } from "@contabilizadev/nucleo/serpro/cliente";
+import type { Confianca } from "@contabilizadev/nucleo/serpro/cadeia-icp";
 import { conferirTermo, ErroTermo } from "@contabilizadev/nucleo/serpro/conferir-termo";
 import { dataEmBrasilia, vigenciaPadrao, type PessoaJuridica } from "@contabilizadev/nucleo/serpro/termo-autorizacao";
 import type { Banco } from "@/banco";
 import { empresas, termosAutorizacao } from "@/banco/esquema";
-import { dadosDaEmpresa, daEmpresa, SemAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
+import {
+  conferirAcessoAoTermo,
+  dadosDaEmpresa,
+  daEmpresa,
+  ehProvisorio,
+  enviosDoTermo,
+  exigirAcessoAoTermo,
+  SemAcessoEmpresa,
+  type AcessoAoTermo,
+  type AcessoEmpresa,
+} from "@/lib/empresas/acesso";
+import { comprovarPosse } from "@/lib/empresas/posse";
+import { identidadeDo } from "@/lib/usuarios/dados-pessoais";
 import { cifrar, decifrar, ErroDeCifra } from "./cifra";
 import { MENSAGENS_DA_PLATAFORMA, type MotivoPlataforma } from "./mensagens";
 import { donoEhAdmin } from "./plataforma";
@@ -48,8 +61,15 @@ export type DependenciasTermo = {
   contratante: PessoaJuridica | null;
   // ADMIN_EMAILS: a empresa com o PLATAFORMA_CNPJ só é a da plataforma se um dono dela for ADMIN.
   adminEmails: readonly string[];
+  // Raízes e ACs aceitas na cadeia do certificado do termo (padrão: as oficiais da ICP-Brasil; os testes passam as de teste).
+  confianca?: Confianca;
   agora?: () => Date;
 };
+
+// Limite de envios do termo por empresa (só os que chegam a ir para a Receita, depois de passar na conferência daqui):
+// cada envio é uma chamada paga, e quem erra o certificado já é parado antes, sem gastar nada.
+export const LIMITE_DE_ENVIOS = { porHora: 3, porDia: 10 } as const;
+const HORA_MS = 60 * 60 * 1000;
 
 // Recusas que valem para o termo guardado (renovar de novo daria o mesmo erro): ele fica marcado e o cliente assina
 // outro. Indisponibilidade, configuração e respostas desconhecidas não marcam nada (tenta de novo depois).
@@ -68,8 +88,9 @@ function exigirConfig(deps: DependenciasTermo): { cliente: ClienteSerpro; chave:
   return { cliente: deps.cliente, chave: deps.chave, contratante: deps.contratante };
 }
 
-async function empresaDo(banco: Banco, acesso: AcessoEmpresa) {
-  dadosDaEmpresa(banco, acesso); // confere o acesso
+// A própria empresa (CNPJ e razão social): o provisório também lê, é o que o termo precisa.
+async function empresaDo(banco: Banco, acesso: AcessoAoTermo) {
+  conferirAcessoAoTermo(acesso);
   const [empresa] = await banco.select({ cnpj: empresas.cnpj, razaoSocial: empresas.razaoSocial }).from(empresas).where(eq(empresas.id, acesso.empresaId));
   if (!empresa) throw new SemAcessoEmpresa();
   return empresa;
@@ -77,13 +98,13 @@ async function empresaDo(banco: Banco, acesso: AcessoEmpresa) {
 
 // "propria": a empresa da plataforma (autorizada sem termo); "reservada": tem o PLATAFORMA_CNPJ mas nenhum dono ADMIN
 // (nem termo nem autorização: só o modo guiado); "cliente": as demais, que assinam o termo.
-async function tipoDaEmpresa(deps: DependenciasTermo, acesso: AcessoEmpresa, cnpjEmpresa: string): Promise<"propria" | "reservada" | "cliente"> {
+async function tipoDaEmpresa(deps: DependenciasTermo, acesso: AcessoAoTermo, cnpjEmpresa: string): Promise<"propria" | "reservada" | "cliente"> {
   if (deps.contratante?.numero !== cnpjEmpresa) return "cliente";
   return (await donoEhAdmin(deps.banco, acesso.empresaId, deps.adminEmails)) ? "propria" : "reservada";
 }
 
 // Parâmetros e envio do termo: a empresa da plataforma não precisa, e a reservada não pode.
-async function exigirCliente(deps: DependenciasTermo, acesso: AcessoEmpresa, cnpjEmpresa: string) {
+async function exigirCliente(deps: DependenciasTermo, acesso: AcessoAoTermo, cnpjEmpresa: string) {
   const tipo = await tipoDaEmpresa(deps, acesso, cnpjEmpresa);
   if (tipo === "propria") throw new ErroTermoAutorizacao("propria");
   if (tipo === "reservada") throw new ErroTermoAutorizacao("plataforma-reservada");
@@ -93,9 +114,11 @@ async function exigirCliente(deps: DependenciasTermo, acesso: AcessoEmpresa, cnp
 const ativo = (acesso: AcessoEmpresa, contratante: string | null) =>
   daEmpresa(acesso, termosAutorizacao, isNull(termosAutorizacao.substituidoEm), contratante ? eq(termosAutorizacao.contratante, contratante) : undefined);
 
-// Situação da autorização da empresa (painel, sino, página Autorização). Só banco: não chama nada.
-export async function situacaoTermo(deps: DependenciasTermo, acesso: AcessoEmpresa): Promise<Situacao> {
+// Situação da autorização da empresa (painel, sino, página Autorização). Só banco: não chama nada. O provisório não lê
+// termo nenhum da empresa: para ele, a autorização está sempre por fazer (o termo dele é a comprovação).
+export async function situacaoTermo(deps: DependenciasTermo, acesso: AcessoAoTermo): Promise<Situacao> {
   const empresa = await empresaDo(deps.banco, acesso);
+  if (ehProvisorio(acesso)) return { estado: "ausente" };
   const tipo = await tipoDaEmpresa(deps, acesso, empresa.cnpj);
   if (tipo === "propria") return { estado: "propria" };
   if (tipo === "reservada") return { estado: "ausente" };
@@ -112,7 +135,7 @@ export type ParametrosTermo = {
 
 // O que o navegador precisa para montar o termo: o destinatário (a plataforma), a empresa e as datas (do servidor,
 // em Brasília, para não depender do relógio do computador do cliente).
-export async function parametrosDoTermo(deps: DependenciasTermo, acesso: AcessoEmpresa): Promise<ParametrosTermo> {
+export async function parametrosDoTermo(deps: DependenciasTermo, acesso: AcessoAoTermo): Promise<ParametrosTermo> {
   const empresa = await empresaDo(deps.banco, acesso);
   const { contratante } = exigirConfig(deps);
   await exigirCliente(deps, acesso, empresa.cnpj);
@@ -126,10 +149,12 @@ export async function parametrosDoTermo(deps: DependenciasTermo, acesso: AcessoE
 // plataforma não assina nada. Só banco: não chama nada.
 export type PreparoAutorizacao = { situacao: Situacao; parametros: ParametrosTermo | null; bloqueio: string | null };
 
-export async function prepararAutorizacao(deps: DependenciasTermo, acesso: AcessoEmpresa): Promise<PreparoAutorizacao> {
+export async function prepararAutorizacao(deps: DependenciasTermo, acesso: AcessoAoTermo): Promise<PreparoAutorizacao> {
   const situacao = await situacaoTermo(deps, acesso);
   if (situacao.estado === "propria") return { situacao, parametros: null, bloqueio: null };
-  if (acesso.papel !== "DONO") return { situacao, parametros: null, bloqueio: new ErroTermoAutorizacao("so-dono").message };
+  if (acesso.papel === "MEMBRO") return { situacao, parametros: null, bloqueio: new ErroTermoAutorizacao("so-dono").message };
+  // Sem "Seus dados" não dá para conferir o responsável pelo e-CNPJ (o ADMIN e o MANAGER entram sem preencher).
+  if (!(await identidadeDo(deps.banco, acesso.usuarioId))) return { situacao, parametros: null, bloqueio: new ErroTermoAutorizacao("sem-dados-pessoais").message };
   try {
     return { situacao, parametros: await parametrosDoTermo(deps, acesso), bloqueio: null };
   } catch (erro) {
@@ -148,48 +173,82 @@ function valoresDoToken(novo: TokenProcurador, linha: { id: string; empresaId: s
 // serpro_chamadas.empresa_id nesta linha, e com FOR UPDATE ficaria esperando esta transação. Uma remoção em andamento
 // (lib/empresas/remocao.ts) trava a mesma linha: quem chega depois espera e, se a empresa foi apagada, não encontra
 // a linha e para com "Empresa não encontrada.".
-async function travarEmpresa(banco: Banco, acesso: AcessoEmpresa) {
+async function travarEmpresa(banco: Banco, acesso: AcessoAoTermo) {
   const [linha] = await banco.select({ id: empresas.id }).from(empresas).where(eq(empresas.id, acesso.empresaId)).for("no key update");
   if (!linha) throw new SemAcessoEmpresa();
 }
 
-export type ResultadoRegistro = { situacao: Situacao; enviado: boolean };
+// acesso: o de dono depois do envio (quem era provisório e comprovou recebe aqui o AcessoEmpresa novo).
+export type ResultadoRegistro = { situacao: Situacao; enviado: boolean; acesso: AcessoEmpresa };
 
-// Recebe o termo assinado no navegador (só o XML: certificado e senha nunca chegam aqui), confere e envia. Só o dono
-// da empresa assina. A empresa fica travada (FOR NO KEY UPDATE) do início ao fim: dois envios juntos (duplo clique, duas
-// abas) entram um depois do outro, e o segundo com o mesmo termo e o token ainda válido não chama de novo. Se o envio
-// falhar, nada é guardado.
-export async function registrarTermo(deps: DependenciasTermo, acesso: AcessoEmpresa, xml: string): Promise<ResultadoRegistro> {
+// Recebe o termo assinado no navegador (só o XML: certificado e senha nunca chegam aqui), confere e envia. Assina o dono
+// da empresa ou quem tem o cadastro provisório dela. Antes de gastar a chamada, o servidor confere tudo
+// (conferirTermo): a cadeia até a raiz da ICP-Brasil, o CNPJ do certificado e o CPF do responsável pelo e-CNPJ, que tem de
+// ser o de "Seus dados" de quem envia. A empresa fica travada (FOR NO KEY UPDATE) do início ao fim: dois envios juntos
+// (duplo clique, duas abas, dois provisórios do mesmo CNPJ) entram um depois do outro, e o segundo com o mesmo termo e o
+// token ainda válido não chama de novo. Os envios que vão para a Receita contam no limite por empresa (LIMITE_DE_ENVIOS)
+// e ficam registrados mesmo se o envio falhar. Termo aceito pelo provisório: ele vira DONO e os provisórios dos outros
+// caem (promoverADono). Se o envio falhar, nada mais é guardado.
+export async function registrarTermo(deps: DependenciasTermo, acesso: AcessoAoTermo, xml: string): Promise<ResultadoRegistro> {
   const empresa = await empresaDo(deps.banco, acesso);
-  if (acesso.papel !== "DONO") throw new ErroTermoAutorizacao("so-dono");
+  if (acesso.papel === "MEMBRO") throw new ErroTermoAutorizacao("so-dono");
   const { cliente, chave, contratante } = exigirConfig(deps);
   await exigirCliente(deps, acesso, empresa.cnpj);
   if (!cnpjNumerico(empresa.cnpj)) throw new ErroTermoAutorizacao("cnpj-alfanumerico");
+  const identidade = await identidadeDo(deps.banco, acesso.usuarioId);
+  if (!identidade) throw new ErroTermoAutorizacao("sem-dados-pessoais");
   const agora = relogio(deps);
-  const termo = conferirTermo(typeof xml === "string" ? xml : "", { contratante, contribuinte: empresa.cnpj }, agora);
+  const termo = conferirTermo(
+    typeof xml === "string" ? xml : "",
+    { contratante, contribuinte: empresa.cnpj, cpfResponsavel: identidade.cpf, confianca: deps.confianca },
+    agora,
+  );
 
   return deps.banco.transaction(async (tx) => {
     const banco = tx as unknown as Banco;
     // Se esperou a trava de uma remoção da empresa, ela já não existe: para aqui, antes do envio (pago) e da gravação.
     await travarEmpresa(banco, acesso);
-    const porta = dadosDaEmpresa(banco, acesso);
-    const [atual] = await banco.select().from(termosAutorizacao).where(ativo(acesso, contratante.numero));
-    const mesmo = atual && atual.xmlHash === termo.hash ? atual : null;
-    if (mesmo && !mesmo.recusadoEm && tokenValido(mesmo, agora)) return { situacao: situacaoDa(mesmo, agora), enviado: false };
+    // Se esperou a trava de outro provisório que comprovou a empresa, o vínculo de quem chega depois já caiu.
+    let vinculo: AcessoAoTermo;
+    try {
+      vinculo = await exigirAcessoAoTermo(banco, { id: acesso.usuarioId }, acesso.empresaId);
+    } catch (erro) {
+      if (erro instanceof SemAcessoEmpresa && ehProvisorio(acesso)) throw new ErroTermoAutorizacao("comprovada-por-outra");
+      throw erro;
+    }
+    if (!ehProvisorio(vinculo)) {
+      const [atual] = await banco.select().from(termosAutorizacao).where(ativo(vinculo, contratante.numero));
+      if (atual && atual.xmlHash === termo.hash && !atual.recusadoEm && tokenValido(atual, agora)) return { situacao: situacaoDa(atual, agora), enviado: false, acesso: vinculo };
+    }
+
+    // Limite de envios da empresa, contado com a trava (o registro sai por outra conexão e vale mesmo se o envio falhar:
+    // a gravação não espera esta transação, porque FOR NO KEY UPDATE não bloqueia a chave estrangeira).
+    const envios = enviosDoTermo(banco, vinculo);
+    if ((await envios.contarDesde(new Date(agora.getTime() - HORA_MS))) >= LIMITE_DE_ENVIOS.porHora) throw new ErroTermoAutorizacao("limite-de-envios");
+    if ((await envios.contarDesde(new Date(agora.getTime() - 24 * HORA_MS))) >= LIMITE_DE_ENVIOS.porDia) throw new ErroTermoAutorizacao("limite-de-envios");
+    await enviosDoTermo(deps.banco, vinculo).registrar(agora);
 
     const finalidade = `Enviar o termo de autorização assinado pela empresa (vigência até ${isoDeCompacta(termo.vigencia)}) para obter o token de procurador`;
     const novo = await enviarTermo(cliente, xml, cnpj(empresa.cnpj), finalidade);
+
+    // Aceito: o provisório comprovou a posse e vira DONO (os provisórios dos outros caem); os dados públicos da Receita
+    // já consultados no cadastro passam a ser os da empresa.
+    const dono = ehProvisorio(vinculo) ? await comprovarPosse(banco, vinculo, empresa.cnpj, agora) : vinculo;
+
+    const porta = dadosDaEmpresa(banco, dono);
+    const [atual] = await banco.select().from(termosAutorizacao).where(ativo(dono, contratante.numero));
+    const mesmo = atual && atual.xmlHash === termo.hash ? atual : null;
     if (mesmo) {
       const [linha] = await porta.alterar(termosAutorizacao, valoresDoToken(novo, mesmo, chave, agora), eq(termosAutorizacao.id, mesmo.id));
-      return { situacao: situacaoDa(linha, agora), enviado: true };
+      return { situacao: situacaoDa(linha, agora), enviado: true, acesso: dono };
     }
-    const chaves = { id: randomUUID(), empresaId: acesso.empresaId };
+    const chaves = { id: randomUUID(), empresaId: dono.empresaId };
     const token = valoresDoToken(novo, chaves, chave, agora);
     await porta.alterar(termosAutorizacao, { substituidoEm: agora }, isNull(termosAutorizacao.substituidoEm));
     const [linha] = await porta.inserir(termosAutorizacao, {
       id: chaves.id,
       contratante: contratante.numero,
-      enviadoPorId: acesso.usuarioId,
+      enviadoPorId: dono.usuarioId,
       enviadoEm: agora,
       dataAssinatura: isoDeCompacta(termo.dataAssinatura),
       vigencia: isoDeCompacta(termo.vigencia),
@@ -200,7 +259,7 @@ export async function registrarTermo(deps: DependenciasTermo, acesso: AcessoEmpr
       termoCifrado: cifrar(xml, chave, contexto(chaves, "termo")),
       ...token,
     });
-    return { situacao: situacaoDa(linha, agora), enviado: true };
+    return { situacao: situacaoDa(linha, agora), enviado: true, acesso: dono };
   });
 }
 

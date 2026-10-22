@@ -11,6 +11,7 @@ import { dadosDaReceita, ultimaConsulta } from "@/lib/empresas/receita";
 import { ErroDeEmpresa } from "@/lib/empresas/servico";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps, perfil, SEGREDO } from "./apoio";
+import { comprovar, dadosDeSocio } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -25,6 +26,9 @@ const em = (ms: number) => new Date(AGORA.getTime() + ms);
 async function usuarios() {
   const ana = (await entrarComGoogle(deps(t.banco, PERFIS), "ana")).usuario;
   const beto = (await entrarComGoogle(deps(t.banco, PERFIS), "beto")).usuario;
+  // Os dois sócios do exemplo ti-fator-r ("Seus dados": o cadastro confere o quadro de sócios).
+  await dadosDeSocio(t.banco, ana, "12345678000195", { nome: "FULANA DE TAL EXEMPLO" });
+  await dadosDeSocio(t.banco, beto, "12345678000195", { nome: "BELTRANO EXEMPLO" });
   return { ana, beto };
 }
 
@@ -35,21 +39,22 @@ describe("QA cadastro pelo CNPJ", () => {
     const r = await consultarParaCadastro(t.banco, ana, cnpj.toLowerCase(), { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("alfanumerico") });
     assert.equal(r.tipo, "previa");
     if (r.tipo !== "previa") return;
-    const id = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
+    const id = await comprovar(t.banco, ana, await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) }));
     const [e] = await t.banco.select().from(empresas).where(eq(empresas.id, id));
     assert.equal(e.cnpj, cnpj);
     const acesso = await exigirAcessoEmpresa(t.banco, ana, id, { papel: "DONO" });
     assert.ok(await ultimaConsulta(t.banco, acesso));
   });
 
-  it("a mesma prévia usada duas vezes não cria nada a mais", async () => {
+  it("a mesma prévia usada duas vezes não cria nada a mais (devolve o mesmo cadastro)", async () => {
     const { ana } = await usuarios();
     const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
     if (r.tipo !== "previa") throw new Error("esperava prévia");
-    await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
-    await assert.rejects(cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(2000) }), ErroDeEmpresa);
+    const id = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
+    assert.equal(await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(2000) }), id);
     assert.equal((await t.banco.select().from(empresas)).length, 1);
-    assert.equal((await t.banco.select().from(consultasCnpj)).length, 1);
+    assert.equal((await t.banco.select().from(empresaUsuarios)).length, 1);
+    assert.equal((await t.banco.select().from(consultasCnpj)).length, 0);
   });
 
   it("prévia com os dados trocados (assinatura da original) é recusada", async () => {
@@ -76,7 +81,7 @@ describe("QA cadastro pelo CNPJ", () => {
     const { ana, beto } = await usuarios();
     const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
     if (r.tipo !== "previa") throw new Error("esperava prévia");
-    const id = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
+    const id = await comprovar(t.banco, ana, await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) }));
     await t.banco.insert(empresaUsuarios).values({ empresaId: id, usuarioId: beto.id, papel: "MEMBRO" });
     const buscar = buscarFalso();
     const r2 = await consultarParaCadastro(t.banco, beto, "12.345.678/0001-95", { segredo: SEGREDO, agora: AGORA, buscar });
@@ -90,7 +95,7 @@ describe("QA dados da Receita: validade", () => {
     const { ana } = await usuarios();
     const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
     if (r.tipo !== "previa") throw new Error("esperava prévia");
-    const id = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
+    const id = await comprovar(t.banco, ana, await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) }));
     const acesso = await exigirAcessoEmpresa(t.banco, ana, id);
     const nenhuma = buscarFalso();
     assert.equal((await dadosDaReceita(t.banco, acesso, { agora: em(30 * DIA), buscar: nenhuma })).fonte, "banco");
@@ -104,7 +109,7 @@ describe("QA dados da Receita: validade", () => {
     const { ana, beto } = await usuarios();
     const r = await consultarParaCadastro(t.banco, ana, "12345678000195", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
     if (r.tipo !== "previa") throw new Error("esperava prévia");
-    const id = await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) });
+    const id = await comprovar(t.banco, ana, await cadastrarPelaPrevia(t.banco, ana, r.previa.token, { segredo: SEGREDO, agora: em(1000) }));
     await t.banco.insert(empresaUsuarios).values({ empresaId: id, usuarioId: beto.id, papel: "MEMBRO" });
     const acesso = await exigirAcessoEmpresa(t.banco, beto, id);
     const res = await dadosDaReceita(t.banco, acesso, { agora: em(10 * 60 * 1000), forcar: true, buscar: buscarExemplo("ti-fator-r") });

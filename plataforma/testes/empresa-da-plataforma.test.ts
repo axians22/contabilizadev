@@ -26,7 +26,7 @@ import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { avisosDaEmpresa } from "@/lib/avisos/coleta";
 import { atualizarCaixaPostal, mensagensDaEmpresa } from "@/lib/caixa-postal/caixa-postal";
 import { exigirAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, CNPJ_RESERVADO, consultarParaCadastro } from "@/lib/empresas/cadastro";
+import { CNPJ_RESERVADO } from "@/lib/empresas/cadastro";
 import { removerEmpresa } from "@/lib/empresas/remocao";
 import { salvarConfigEsocial, type DadosDaConfig } from "@/lib/esocial/configuracao";
 import { enviarEsocialPelaPlataforma, type DependenciasEsocial } from "@/lib/esocial/envio";
@@ -44,6 +44,7 @@ import { liberada } from "@/lib/termo/situacao";
 import { contextoSerpro, ErroTermoAutorizacao, parametrosDoTermo, situacaoTermo, type DependenciasTermo } from "@/lib/termo/termo";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -86,9 +87,9 @@ const entrar = async (quem: keyof typeof PERFIS) => (await entrarComGoogle(depsL
 // A empresa da plataforma cadastrada pelo ADMIN (o assistente passa o PLATAFORMA_CNPJ como reservado).
 async function daPlataforma() {
   const usuario = await entrar("admin");
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA, cnpjReservado: PLATAFORMA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA, cnpjReservado: PLATAFORMA });
   const acesso = await exigirAcessoEmpresa(t.banco, usuario, empresaId);
   return { usuario, empresaId, acesso };
 }
@@ -135,7 +136,7 @@ async function comHistorico() {
 describe("empresa da plataforma: cadastro e autorização sem termo", () => {
   it("só um ADMIN cadastra o PLATAFORMA_CNPJ; a empresa fica 'propria' (autorizada, sem termo), com o contexto do contratante", async () => {
     const ana = await entrar("ana");
-    await assert.rejects(consultarParaCadastro(t.banco, ana, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA }), { message: CNPJ_RESERVADO });
+    await assert.rejects(consultarComDados(t.banco, ana, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA }), { message: CNPJ_RESERVADO });
     const { acesso } = await daPlataforma();
     const situacao = await situacaoTermo(termo(), acesso);
     assert.equal(situacao.estado, "propria");

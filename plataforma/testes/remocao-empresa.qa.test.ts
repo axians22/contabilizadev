@@ -7,19 +7,19 @@ import { randomBytes } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
 import { buscarExemplo } from "@contabilizadev/nucleo/brasilapi/exemplos";
-import { certificadoIcpDeTeste } from "@contabilizadev/nucleo/certificado-teste";
+import { certificadoIcpDeTeste, confiancaDeTeste } from "@contabilizadev/nucleo/certificado-teste";
 import { clienteFalso } from "@contabilizadev/nucleo/serpro/cliente-falso";
 import type { Resposta } from "@contabilizadev/nucleo/serpro/cliente";
 import { abrirCertificado, assinarTermo, montarTermo, vigenciaPara } from "@contabilizadev/nucleo/serpro/termo-autorizacao";
 import { empresas, sessoes, termosAutorizacao } from "@/banco/esquema";
 import { entrarComGoogle, resolverSessao } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, SemAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { removerEmpresa } from "@/lib/empresas/remocao";
 import { criarEmpresa, definirEmpresaAtiva } from "@/lib/empresas/servico";
 import { parametrosDoTermo, registrarTermo, type DependenciasTermo } from "@/lib/termo/termo";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -55,13 +55,13 @@ async function entrarAna() {
 describe("QA remoção x envio do termo", () => {
   it("o envio do termo que esperou a trava da remoção não chama o Serpro nem quebra com erro do banco", async () => {
     const ana = await entrarAna();
-    const r = await consultarParaCadastro(t.banco, ana.usuario, EMPRESA, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+    const r = await consultarComDados(t.banco, ana.usuario, EMPRESA, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
     assert.equal(r.tipo, "previa");
-    const empresaId = await cadastrarPelaPrevia(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+    const empresaId = await cadastrarComprovada(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
     const acesso = await exigirAcessoEmpresa(t.banco, ana.usuario, empresaId);
 
     const cliente = clienteFalso(tokenRecebido());
-    const d: DependenciasTermo = { banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: [], agora: () => AGORA };
+    const d: DependenciasTermo = { banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: [], confianca: confiancaDeTeste(), agora: () => AGORA };
     const p = await parametrosDoTermo(d, acesso);
     const cert = certificadoIcpDeTeste({ tipo: "PJ", numero: EMPRESA, nome: "EXEMPLO SOFTWARE LTDA" });
     const aberto = abrirCertificado(new Uint8Array(cert.pfx), cert.senha);

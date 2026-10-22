@@ -9,10 +9,10 @@ import { consultasCnpj, defis } from "@/banco/esquema";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { avisosDaEmpresa } from "@/lib/avisos/coleta";
 import { dadosDaEmpresa, exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import type { Situacao } from "@/lib/termo/situacao";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -27,9 +27,9 @@ const AUSENTE: Situacao = { estado: "ausente" };
 // Empresa aberta em 15/01/2027: não esteve no Simples em 2026, não entrega a DEFIS de 2026.
 async function empresaAbertaEm2027() {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "ana")).usuario;
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: CADASTRO, buscar: buscarExemplo("ti-anexo-iii") });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: CADASTRO, buscar: buscarExemplo("ti-anexo-iii") });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: CADASTRO });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: CADASTRO });
   await t.banco
     .update(consultasCnpj)
     .set({ dados: sql`jsonb_set(${consultasCnpj.dados}, '{dataInicioAtividade}', '"2027-01-15"')` })

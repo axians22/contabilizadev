@@ -12,7 +12,7 @@ import { acaoPrincipal, ESTADO_INICIAL, precisaRepesquisar, reduzir, type Estado
 
 function previa(exemplo: Exemplo, consultadaEm: string): PreviaDoAssistente {
   const dados = lerRespostaCnpj(respostaGravada(exemplo));
-  return { dados, diagnostico: diagnosticar(dados, consultadaEm.slice(0, 10)), consultadaEm, token: "t" };
+  return { dados, diagnostico: diagnosticar(dados, consultadaEm.slice(0, 10)), consultadaEm, token: "t", qsa: "confere" as const };
 }
 const aplicar = (estado: EstadoAssistente, ...eventos: EventoAssistente[]) => eventos.reduce(reduzir, estado);
 

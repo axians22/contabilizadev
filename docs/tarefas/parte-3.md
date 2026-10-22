@@ -134,3 +134,61 @@ Aprovada. Nenhuma pendência em aberto. Typecheck e lint limpos. Nenhuma chamada
 
 ### Situação
 Aprovada. Nenhuma pendência em aberto. Typecheck e lint limpos. Nenhuma chamada a BrasilAPI ou Serpro nesta rodada. Não foi feito commit.
+
+## Ajustes (cadastro pessoal e prova de posse da empresa, 21/10/2026)
+
+Uma primeira tentativa desta rodada foi interrompida (duas cópias do engenheiro rodaram juntas por engano de
+orquestração). O trabalho dela ficou no working tree e foi conferido e completado nesta rodada, sem recomeçar.
+
+### Correções pedidas
+1. (Usuário) "Seus dados" obrigatório no primeiro login, só para COMMON_USER (ADMIN e MANAGER livres; pedem os dados só
+   para cadastrar empresa de cliente ou assinar o termo), conferido no servidor (páginas, ações e rotas).
+2. (Usuário) Busca de CEP com banco primeiro, fonte pública gratuita, digitação se falhar, fonte nunca nomeada.
+3. (Usuário) Cadastro da empresa exige "Seus dados" e confere o usuário com o quadro de sócios; empresa nasce
+   aguardando comprovação, CNPJ não bloqueado, sem revelar quem cadastrou.
+4. (Usuário) Aguardando comprovação: só Autorização, nenhum conteúdo nem chamada à Receita, provisórios isolados.
+5. (Usuário) Prova pelo termo: cadeia ICP-Brasil, validade, CNPJ e CPF do responsável; limite de envios; promoção a DONO.
+6. (Usuário) LGPD: dados pessoais nunca para outros usuários, logs ou área do admin (lá, só nome e e-mail).
+7. (Usuário) Testes, docs e README.
+
+### Como foram resolvidas
+1. Tela `/meus-dados` (com `/termos`) em `app/(conta)`, fora do painel; tabela `dados_pessoais` (CPF único, versão e
+   data do aceite). `exigirSessao` manda o COMMON_USER pendente para `/meus-dados` (vale em página, layout e server
+   action); `comSessao` devolve 403 nas rotas; só `/entrar`, sair, `/termos` e a própria tela ficam livres
+   (`lib/usuarios/portao-dos-dados.ts`). ADMIN e MANAGER não passam pelo portão; `FaltamDadosPessoais` no cadastro de
+   empresa de cliente e `sem-dados-pessoais` no termo. "Seus dados" no menu do usuário.
+2. `nucleo/src/brasilapi/cep.ts` e `lib/usuarios/cep.ts` (tabela `ceps`, guarda também o "não encontrado" por um tempo).
+3. `lib/empresas/qsa.ts` (nome normalizado e dígitos visíveis do CPF) sobre a consulta pública guardada em
+   `cnpjs_consultados` (`consulta-publica.ts`); recusa com `NaoConfereComQsa` e o motivo no `<Explicacao>`; sem quadro,
+   aviso `QSA_INDISPONIVEL`; vínculo `PROVISORIO` (`cadastrarProvisorio`), sem bloquear o CNPJ.
+4. Portão `aguardando` (só leva à Autorização); `AcessoProvisorio` em `lib/empresas/acesso.ts`, recusado por
+   `exigirAcessoEmpresa`, `dadosDaEmpresa` e `daEmpresa`. Empresa da plataforma nasce DONO; vínculos antigos ficam como
+   estão (migração 0016 só acrescenta).
+5. `nucleo/src/serpro/cadeia-icp.ts` com as raízes v4, v5, v6, v7, v12, v13 e as ACs oficiais em
+   `nucleo/certificados/icp-brasil/` (origem e hashes no `ORIGEM.md`); `conferirTermo` confere CNPJ (2.16.76.1.3.3) e
+   CPF do responsável (2.16.76.1.3.4) antes de enviar; limite 3/hora e 10/dia em `envios_termo`; `comprovarPosse`
+   (`lib/empresas/posse.ts`) promove a DONO e derruba os outros provisórios (aviso "comprovada por outra conta").
+6. Dados pessoais só lidos pelo próprio usuário (`lib/usuarios/dados-pessoais.ts`); nada vai para log; a lista de
+   usuários do admin não traz nada além de nome e e-mail (teste).
+7. Testes: `nucleo/src/brasilapi/cep.test.ts`, `nucleo/src/serpro/cadeia-icp.test.ts`, `conferir-termo.test.ts`,
+   `lib/usuarios/validacao.test.ts`, `lib/empresas/qsa.test.ts`, `testes/dados-pessoais.test.ts`,
+   `testes/portao-dos-dados.test.ts`, `testes/posse.test.ts`, `testes/seus-dados-telas.test.ts`; docs `login.md`,
+   `empresas.md`, `autorizacao.md`, `nucleo.md` e README.
+
+### Ciclos desta rodada
+| Ciclo | Etapa | Resultado | Problemas | Testes |
+|---|---|---|---|---|
+| 1 | Engenheiro | Entregue | - | núcleo 395/395, plataforma 1473/1473 |
+| 1 | QA | Reprovado | 1 (média): desistir do cadastro apagava a empresa sem anonimizar `serpro_chamadas` | plataforma 1473/1473; teste QA novo falhou |
+| 2 | Engenheiro | Entregue | Corrigido: `apagarEmpresaETudo` (`lib/empresas/apagar-empresa.ts`) usado pela remoção e pela desistência | núcleo 395/395, plataforma 1484/1484 (duas vezes) |
+| 2 | QA | Aprovado | - | plataforma 1486/1486 com `testes/parte3-desistencia-ciclo2.qa.test.ts` |
+| 2 | Tech lead | Aprovado | - | núcleo 395/395, plataforma 1486/1486 |
+
+Correção extra (apontada pelo QA no ciclo 1): quando o último provisório desiste, `desistirDoCadastro` apaga a empresa
+com o mesmo código da remoção definitiva, na mesma transação e com a empresa travada; o gasto em `serpro_chamadas` fica
+sem `empresa_id`, sem contribuinte, sem mensagens e sem o CNPJ na finalidade. Com dois provisórios, a desistência do
+primeiro não toca nada do outro.
+
+### Situação
+Aprovada. Nenhuma pendência em aberto. `npm test` passou duas vezes, typecheck e lint limpos. Nenhuma chamada real nova
+(`serpro_chamadas` continua com 30 linhas). Não foi feito commit.

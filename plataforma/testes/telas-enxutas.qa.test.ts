@@ -19,7 +19,7 @@ const nada = async () => ({ erro: "não chamado" });
 
 function etapa(exemplo: Exemplo, id: IdEtapa) {
   const dados = lerRespostaCnpj(respostaGravada(exemplo));
-  const previa = { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t" };
+  const previa = { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t", qsa: "confere" as const };
   return renderToStaticMarkup(
     createElement(Assistente, { consultar: nada, cadastrar: nada, preparar: nada as never, enviar: nada, inicial: { etapa: id, cnpj: "12.345.678/0001-95", previa, recebidaEm: Date.now(), empresaId: null, autorizacao: null, autorizadaAte: null } }),
   );

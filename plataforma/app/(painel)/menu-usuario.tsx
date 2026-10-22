@@ -17,7 +17,8 @@ const iniciais = (nome: string) =>
     .map((p) => p[0]!.toUpperCase())
     .join("");
 
-// Menu do usuário na barra de cima: quem está logado, a entrada da área do administrador (só para quem tem acesso) e sair.
+// Menu do usuário na barra de cima: quem está logado, "Seus dados", a entrada da área do administrador (só para quem tem
+// acesso) e sair.
 // Com certificado guardado neste navegador (app/assinador), sair pergunta antes se apaga.
 // `areaDoAdmin` vem do layout (entraNaAreaDoAdmin, lib/admin.ts: MANAGER e ADMIN); dentro da área (`naAdministracao`), o
 // atalho é o de volta para a aplicação. A entrada leva à primeira página que o papel vê (inicioDoAdmin: o MANAGER cai
@@ -86,6 +87,9 @@ export function MenuUsuario({
             {semLogin && <span className="mt-1 text-xs text-warn">Login desligado (desenvolvimento): sair abre uma sessão nova.</span>}
           </div>
           <span className="mx-2 border-t border-line" aria-hidden="true" />
+          <Link role="menuitem" href="/meus-dados" onClick={() => setAberto(false)} className={`rounded-xl px-3 py-2 text-sm transition-colors hover:bg-raised ${foco}`}>
+            Seus dados
+          </Link>
           {naAdministracao ? (
             <Link role="menuitem" href="/" onClick={() => setAberto(false)} className={`rounded-xl px-3 py-2 text-sm transition-colors hover:bg-raised ${foco}`}>
               Voltar para a aplicação

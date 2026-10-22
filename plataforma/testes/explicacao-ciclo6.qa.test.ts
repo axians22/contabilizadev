@@ -60,7 +60,7 @@ describe("QA ciclo6: empresa de anexo fixo (sem Fator R)", () => {
             inicial: {
               etapa: "diagnostico",
               cnpj: "12.345.678/0001-95",
-              previa: { dados: lerRespostaCnpj(respostaGravada("ti-anexo-iii")), diagnostico: d, consultadaEm: `${HOJE}T12:00:00.000Z`, token: "t" },
+              previa: { dados: lerRespostaCnpj(respostaGravada("ti-anexo-iii")), diagnostico: d, consultadaEm: `${HOJE}T12:00:00.000Z`, token: "t", qsa: "confere" as const },
               recebidaEm: Date.now(),
               empresaId: null,
               autorizacao: null,

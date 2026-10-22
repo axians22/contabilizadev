@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { banco } from "@/banco";
 import { exigirSessao } from "@/lib/autenticacao/servidor";
-import { SemAcessoEmpresa } from "@/lib/empresas/acesso";
+import { ehProvisorio, exigirAcessoAoTermo, SemAcessoEmpresa } from "@/lib/empresas/acesso";
 import { exigirAcessoAoConteudo } from "@/lib/empresas/portao";
 import { dadosDaReceita } from "@/lib/empresas/receita";
 import { removerEmpresa } from "@/lib/empresas/remocao";
-import { ErroDeEmpresa } from "@/lib/empresas/servico";
+import { desistirDoCadastro, ErroDeEmpresa } from "@/lib/empresas/servico";
 
 export type EstadoAtualizacao = { erro?: string; aviso?: string; ok?: boolean } | undefined;
 
@@ -44,4 +44,17 @@ export async function removerEmpresaAcao(_anterior: EstadoRemocao, dados: FormDa
   // A barra de cima (lista de empresas e a ativa) muda junto.
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+// "Desistir deste cadastro": só para o cadastro provisório (aguardando comprovação) do próprio usuário. Tira o vínculo dele;
+// a empresa sem mais ninguém é apagada (o provisório não grava dado nela).
+export async function desistirDoCadastroAcao(dados: FormData): Promise<void> {
+  const sessao = await exigirSessao();
+  try {
+    const acesso = await exigirAcessoAoTermo(banco(), sessao.usuario, String(dados.get("empresaId") ?? ""));
+    if (ehProvisorio(acesso)) await desistirDoCadastro(banco(), acesso);
+  } catch (erro) {
+    if (!(erro instanceof SemAcessoEmpresa)) throw erro;
+  }
+  revalidatePath("/", "layout");
 }

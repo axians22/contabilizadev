@@ -9,13 +9,14 @@ import { buscarExemplo } from "@contabilizadev/nucleo/brasilapi/exemplos";
 import { consultasCnpj, empresas, empresaUsuarios, serproChamadas, sessoes, termosAutorizacao } from "@/banco/esquema";
 import { entrarComGoogle, resolverSessao } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, SemAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, CNPJ_RESERVADO, consultarParaCadastro } from "@/lib/empresas/cadastro";
+import { CNPJ_RESERVADO } from "@/lib/empresas/cadastro";
 import { abrirPortao } from "@/lib/empresas/portao";
 import { CNPJ_NAO_CONFERE, removerEmpresa, TABELAS_ANONIMIZADAS, TABELAS_APAGADAS_COM_A_EMPRESA } from "@/lib/empresas/remocao";
 import { criarEmpresa, definirEmpresaAtiva, empresasDaSessao, ErroDeEmpresa } from "@/lib/empresas/servico";
 import { registroNoBanco } from "@/lib/serpro/registro";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -50,9 +51,9 @@ async function cenario() {
   const ana = await entrar("ana");
   const beto = await entrar("beto");
   const caio = await entrar("caio");
-  const r = await consultarParaCadastro(t.banco, ana.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
+  const r = await consultarComDados(t.banco, ana.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r") });
   assert.equal(r.tipo, "previa");
-  const a = await cadastrarPelaPrevia(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: new Date(AGORA.getTime() + 60_000) });
+  const a = await cadastrarComprovada(t.banco, ana.usuario, r.previa.token, { segredo: SEGREDO, agora: new Date(AGORA.getTime() + 60_000) });
   const b = (await criarEmpresa(t.banco, beto.usuario, { cnpj: CNPJ_B, razaoSocial: "Empresa B Ltda" })).id;
   await t.banco.insert(empresaUsuarios).values([
     { empresaId: a, usuarioId: caio.usuario.id, papel: "MEMBRO" },
@@ -334,9 +335,9 @@ describe("removerEmpresa: empresa ativa e sessões", () => {
 
 describe("depois de remover, o CNPJ pode ser cadastrado de novo", () => {
   async function cadastrar(sessao: { usuario: { id: string; papel?: "COMMON_USER" | "MANAGER" | "ADMIN" } }, cnpjReservado?: string) {
-    const r = await consultarParaCadastro(t.banco, sessao.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r"), cnpjReservado });
+    const r = await consultarComDados(t.banco, sessao.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r"), cnpjReservado });
     assert.equal(r.tipo, "previa");
-    return cadastrarPelaPrevia(t.banco, sessao.usuario, r.previa.token, { segredo: SEGREDO, agora: new Date(AGORA.getTime() + 60_000), cnpjReservado });
+    return cadastrarComprovada(t.banco, sessao.usuario, r.previa.token, { segredo: SEGREDO, agora: new Date(AGORA.getTime() + 60_000), cnpjReservado });
   }
 
   it("pelo assistente, pelo mesmo dono ou por outra pessoa", async () => {
@@ -361,7 +362,7 @@ describe("depois de remover, o CNPJ pode ser cadastrado de novo", () => {
     const id = await cadastrar(adm, CNPJ_A);
     await removerEmpresa(t.banco, adm, id, CNPJ_A, { log: semLog });
     await assert.rejects(
-      consultarParaCadastro(t.banco, beto.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r"), cnpjReservado: CNPJ_A }),
+      consultarComDados(t.banco, beto.usuario, CNPJ_A, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-fator-r"), cnpjReservado: CNPJ_A }),
       (e) => e instanceof ErroDeEmpresa && e.message === CNPJ_RESERVADO,
     );
     const deNovo = await cadastrar(adm, CNPJ_A);

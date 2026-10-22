@@ -10,7 +10,9 @@ export type Marcados = { certificado: boolean; govbr: boolean };
 
 const caixa = "size-4 shrink-0 cursor-pointer accent-accent-ink";
 
-export function Requisitos({ marcados, marcar }: { marcados: Marcados; marcar: (m: Marcados) => void }) {
+// comprovacao: a empresa ainda aguarda comprovação (cadastro provisório): sem o termo não há modo guiado, o conteúdo fica
+// fechado até a assinatura.
+export function Requisitos({ marcados, marcar, comprovacao = false }: { marcados: Marcados; marcar: (m: Marcados) => void; comprovacao?: boolean }) {
   return (
     <fieldset className="flex flex-col gap-2 text-sm">
       <legend className="mb-1 font-medium">Antes de assinar, confirme que a empresa tem:</legend>
@@ -47,7 +49,11 @@ export function Requisitos({ marcados, marcar }: { marcados: Marcados; marcar: (
         />
       </div>
       {!(marcados.certificado && marcados.govbr) && (
-        <p className="text-muted">Ainda não tem? Veja ao lado de cada item como conseguir; enquanto isso, o modo guiado continua funcionando.</p>
+        <p className="text-muted">
+          {comprovacao
+            ? "Ainda não tem? Veja ao lado de cada item como conseguir; a empresa fica aguardando até você assinar."
+            : "Ainda não tem? Veja ao lado de cada item como conseguir; enquanto isso, o modo guiado continua funcionando."}
+        </p>
       )}
     </fieldset>
   );

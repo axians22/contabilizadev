@@ -14,7 +14,7 @@ import { ESTADO_INICIAL, type Autorizacao, type EstadoAssistente, type IdEtapa }
 import { explicacoes, paragrafosVisiveis, semExplicacoes, texto } from "./tela";
 
 const dados = lerRespostaCnpj(respostaGravada("ti-fator-r"));
-const previa = { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t" };
+const previa = { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t", qsa: "confere" as const };
 const PARAMETROS = {
   contratante: { numero: "11444777000161", nome: "PLATAFORMA DE TESTE LTDA" },
   empresa: { cnpj: dados.cnpj, razaoSocial: dados.razaoSocial },
@@ -61,7 +61,9 @@ describe("assistente, passo 7 (Autorização)", () => {
     assert.match(t, /Passo 7 de 7 · Autorização/);
     assert.match(etapaAtual(html), /7\. Autorização/);
     assert.match(html, /<h2 id="titulo-etapa" tabindex="-1"[^>]*>Autorize a plataforma na Receita Federal<\/h2>/);
-    assert.match(t, /Opcional: com a autorização, declarações e guias são feitas aqui mesmo/);
+    // Cliente (aguardando comprovação): o termo é a prova, não é opcional; a empresa da plataforma nem chega aqui (própria).
+    assert.match(t, /Assine com o e-CNPJ da empresa, emitido em nome do seu CPF: o termo comprova que a empresa é sua/);
+    assert.doesNotMatch(t, /Opcional/);
     // Os mesmos requisitos da página Autorização: dois itens para marcar, cada um com o tooltip de onde conseguir.
     assert.equal((html.match(/type="checkbox"/g) ?? []).length, 2);
     assert.match(t, /Certificado digital e-CNPJ A1 da empresa/);
@@ -95,8 +97,8 @@ describe("assistente, passo 7 (Autorização)", () => {
     const html = tela(cadastrada("autorizacao", { autorizacao: { tipo: "indisponivel", mensagem } }));
     const t = visivel(html);
     assert.ok(t.includes(mensagem));
-    assert.match(t, /A empresa já está cadastrada e funciona no modo guiado/);
-    assert.ok(explicacoes(html).some((e) => /autorizar depois, pela página Autorização/.test(e.texto)));
+    assert.match(t, /A empresa já está cadastrada e aguarda comprovação/);
+    assert.ok(explicacoes(html).some((e) => /assinar depois, pela página Autorização/.test(e.texto)));
     assert.ok(link(html, "Ir para o painel"));
     assert.doesNotMatch(html, /type="checkbox"/);
   });
@@ -133,7 +135,7 @@ describe("assistente, passos 1 a 5 depois do cadastro: só leitura", () => {
   it("passo 5: diz que já está cadastrada; o botão é Continuar, não Confirmar e cadastrar", () => {
     const html = tela(cadastrada("diagnostico"));
     const t = visivel(html);
-    assert.match(t, /A EXEMPLO SOFTWARE LTDA já está cadastrada e você é o dono dela\./);
+    assert.match(t, /A EXEMPLO SOFTWARE LTDA já está cadastrada e aguarda a comprovação pelo termo\./);
     assert.doesNotMatch(t, /Confirmar e cadastrar|Ao confirmar, cadastramos/);
     assert.match(html, /<button type="submit"[^>]*>Continuar<\/button>/);
     // Mesmo com a prévia vencida, nada de pesquisar de novo: a empresa já existe.

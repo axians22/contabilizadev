@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { formatarCnpj } from "@/lib/empresas/cnpj";
 import type { EmpresaDoUsuario } from "@/lib/empresas/servico";
 
+const PAPEL: Record<EmpresaDoUsuario["papel"], string> = { DONO: "Dono", MEMBRO: "Membro", PROVISORIO: "Aguardando comprovação" };
 const foco = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ink";
 
 function Nome({ titulo, detalhe }: { titulo: string; detalhe: string }) {
@@ -52,7 +53,7 @@ export function SeletorEmpresa({
       </Link>
     );
   }
-  const detalhe = `CNPJ ${formatarCnpj(ativa.cnpj)}`;
+  const detalhe = `CNPJ ${formatarCnpj(ativa.cnpj)}${ativa.papel === "PROVISORIO" ? " · aguardando comprovação" : ""}`;
 
   const trocar = (id: string) => {
     setAberto(false);
@@ -95,7 +96,7 @@ export function SeletorEmpresa({
                   className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-raised ${foco} ${e.id === ativa.id ? "bg-raised" : ""}`}
                 >
                   <Nome titulo={e.razaoSocial} detalhe={`CNPJ ${formatarCnpj(e.cnpj)}`} />
-                  <span className="shrink-0 text-xs text-muted">{e.papel === "DONO" ? "Dono" : "Membro"}</span>
+                  <span className="shrink-0 text-xs text-muted">{PAPEL[e.papel]}</span>
                 </button>
               </li>
             ))}

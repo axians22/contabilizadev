@@ -6,7 +6,7 @@ import { Cartao } from "@/app/ui";
 import type { EstadoEnvio } from "@/app/(painel)/autorizacao/acoes";
 import { AssinarTermo, AutorizacaoConcluida } from "@/app/(painel)/autorizacao/assinar-termo";
 import { PROPRIA_SEM_TERMO } from "@/lib/termo/mensagens";
-import { vistaDaAutorizacao, type EstadoAssistente } from "@/lib/empresas/assistente";
+import { aguardaComprovacao, vistaDaAutorizacao, type EstadoAssistente } from "@/lib/empresas/assistente";
 
 // 7. Autorização: o mesmo fluxo da página Autorização (requisitos, certificado e senha, texto oficial, assinar no
 // navegador e enviar), com os mesmos componentes e a mesma ação do servidor. O texto oficial do termo é carregado sob
@@ -48,19 +48,33 @@ export function EtapaAutorizacao({
       return (
         <>
           <Cartao className="border-warn/40 bg-warn-soft px-5 py-4 text-sm">{a?.tipo === "indisponivel" ? a.mensagem : null}</Cartao>
-          <p className="text-sm leading-relaxed">
-            A empresa já está cadastrada e funciona no modo guiado.{" "}
-            <Explicacao rotulo="O que é o modo guiado?" texto="Sem a autorização, calculamos e mostramos o que lançar no portal da Receita Federal. Dá para autorizar depois, pela página Autorização." />
-          </p>
+          {aguardaComprovacao(estado.previa) ? (
+            <p className="text-sm leading-relaxed">
+              A empresa já está cadastrada e aguarda comprovação.{" "}
+              <Explicacao rotulo="O que falta para liberar a empresa?" texto="O conteúdo da empresa abre depois que o termo de autorização é assinado com o e-CNPJ dela, em nome do seu CPF. Dá para assinar depois, pela página Autorização." />
+            </p>
+          ) : (
+            <p className="text-sm leading-relaxed">
+              A empresa já está cadastrada e funciona no modo guiado.{" "}
+              <Explicacao rotulo="O que é o modo guiado?" texto="Sem a autorização, calculamos e mostramos o que lançar no portal da Receita Federal. Dá para autorizar depois, pela página Autorização." />
+            </p>
+          )}
         </>
       );
     case "assinar":
       if (a?.tipo !== "assinar" || !estado.empresaId) return null;
       return (
         <>
-          <p className="text-sm leading-relaxed">
-            Opcional: com a autorização, declarações e guias são feitas aqui mesmo, sempre com a sua confirmação. <ExplicacaoDoTermo termo="termo" />
-          </p>
+          {aguardaComprovacao(estado.previa) ? (
+            <p className="text-sm leading-relaxed">
+              Assine com o e-CNPJ da empresa, emitido em nome do seu CPF: o termo comprova que a empresa é sua e já deixa a autorização valendo.{" "}
+              <ExplicacaoDoTermo termo="termo" />
+            </p>
+          ) : (
+            <p className="text-sm leading-relaxed">
+              Opcional: com a autorização, declarações e guias são feitas aqui mesmo, sempre com a sua confirmação. <ExplicacaoDoTermo termo="termo" />
+            </p>
+          )}
           <AssinarTermo
             empresaId={estado.empresaId}
             parametros={a.parametros}
@@ -72,6 +86,7 @@ export function EtapaAutorizacao({
             enviar={enviar}
             aoConcluir={aoConcluir}
             aoMudarEnvio={aoMudarEnvio}
+            comprovacao={aguardaComprovacao(estado.previa)}
           />
         </>
       );

@@ -3,7 +3,8 @@
 // parâmetro, para os testes rodarem com o banco de teste e um verificador falso.
 import { and, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Banco } from "@/banco";
-import { sessoes, usuarios, type Papel } from "@/banco/esquema";
+import { dadosPessoais, sessoes, usuarios, type Papel } from "@/banco/esquema";
+import { VERSAO_DOS_TERMOS } from "@/lib/usuarios/validacao";
 import type { ConfigAutenticacao } from "./config";
 import { assinarToken, hashDoToken, lerTokenAssinado, novoToken, VALIDADE_DA_SESSAO_MS } from "./cookie";
 import type { VerificadorGoogle } from "./google";
@@ -17,8 +18,9 @@ export type Dependencias = {
   agora?: () => Date;
 };
 
-// O usuário que circula pelo site. Só estes campos saem do banco, nunca o registro inteiro.
-export type UsuarioDaSessao = { id: string; email: string; nome: string; avatarUrl: string | null; papel: Papel };
+// O usuário que circula pelo site. Só estes campos saem do banco, nunca o registro inteiro (nem os dados pessoais: só se
+// faltam). dadosPendentes: "Seus dados" ainda não preenchidos, ou o aceite é de uma versão antiga dos termos.
+export type UsuarioDaSessao = { id: string; email: string; nome: string; avatarUrl: string | null; papel: Papel; dadosPendentes: boolean };
 
 export type SessaoValida = { sessaoId: string; empresaAtivaId: string | null; usuario: UsuarioDaSessao };
 
@@ -29,8 +31,13 @@ const CAMPOS = { id: usuarios.id, email: usuarios.email, nome: usuarios.nome, av
 
 const agoraDe = (deps: Dependencias) => (deps.agora ?? (() => new Date()))();
 
-function paraSessao({ id, email, nome, avatarUrl, papel }: UsuarioDaSessao & { ativo: boolean }): UsuarioDaSessao {
-  return { id, email, nome, avatarUrl, papel };
+function paraSessao({ id, email, nome, avatarUrl, papel }: Omit<UsuarioDaSessao, "dadosPendentes"> & { ativo: boolean }, versaoAceita: string | null): UsuarioDaSessao {
+  return { id, email, nome, avatarUrl, papel, dadosPendentes: versaoAceita !== VERSAO_DOS_TERMOS };
+}
+
+async function versaoAceita(banco: Banco, usuarioId: string): Promise<string | null> {
+  const [d] = await banco.select({ versao: dadosPessoais.termosVersao }).from(dadosPessoais).where(eq(dadosPessoais.usuarioId, usuarioId));
+  return d?.versao ?? null;
 }
 
 // Cria a sessão no banco e devolve o valor do cookie (o token só existe no cookie; o banco guarda o hash).
@@ -85,7 +92,7 @@ export async function entrarComGoogle(deps: Dependencias, idToken: string) {
     if (atual && !atual.ativo) throw new ErroDeLogin("Esta conta foi desativada.");
     throw new ErroDeLogin("Esta conta Google não é a mesma que criou o acesso com este e-mail.");
   }
-  return { usuario: paraSessao(usuario), ...(await abrirSessao(deps, usuario.id)) };
+  return { usuario: paraSessao(usuario, await versaoAceita(deps.banco, usuario.id)), ...(await abrirSessao(deps, usuario.id)) };
 }
 
 // A conta do login desligado (só fora de produção). Vem do banco, e não é inventada, porque os dados gravados
@@ -105,7 +112,7 @@ export async function entrarSemLogin(deps: Dependencias) {
     .where(and(eq(usuarios.email, email), eq(usuarios.ativo, true)))
     .returning(CAMPOS);
   if (!usuario) throw new ErroDeLogin("Esta conta foi desativada.");
-  return { usuario: paraSessao(usuario), ...(await abrirSessao(deps, usuario.id)) };
+  return { usuario: paraSessao(usuario, await versaoAceita(deps.banco, usuario.id)), ...(await abrirSessao(deps, usuario.id)) };
 }
 
 // Resolve o cookie na sessão e no usuário, relendo o banco a cada requisição: desativar a conta, mudar o papel ou
@@ -114,9 +121,10 @@ export async function resolverSessao(deps: Dependencias, valorDoCookie: string |
   const token = lerTokenAssinado(valorDoCookie, deps.config.segredo);
   if (!token) return null;
   const [linha] = await deps.banco
-    .select({ sessaoId: sessoes.id, empresaAtivaId: sessoes.empresaAtivaId, provedor: usuarios.provedor, ...CAMPOS })
+    .select({ sessaoId: sessoes.id, empresaAtivaId: sessoes.empresaAtivaId, provedor: usuarios.provedor, versaoAceita: dadosPessoais.termosVersao, ...CAMPOS })
     .from(sessoes)
     .innerJoin(usuarios, eq(usuarios.id, sessoes.usuarioId))
+    .leftJoin(dadosPessoais, eq(dadosPessoais.usuarioId, usuarios.id))
     .where(and(eq(sessoes.tokenHash, hashDoToken(token)), gt(sessoes.expiraEm, agoraDe(deps))));
   if (!linha || !linha.ativo) return null;
   // Sessão da conta do login desligado não vale depois que o login é religado (nem nunca em produção).
@@ -126,7 +134,7 @@ export async function resolverSessao(deps: Dependencias, valorDoCookie: string |
   // deve ler a coluna crua para decidir permissão (ela pode estar atrasada): use sempre papelPara.
   const papel = papelPara(linha.email, linha.papel, deps.config.adminEmails);
   if (papel !== linha.papel) await deps.banco.update(usuarios).set({ papel }).where(eq(usuarios.id, linha.id));
-  return { sessaoId: linha.sessaoId, empresaAtivaId: linha.empresaAtivaId, usuario: paraSessao({ ...linha, papel }) };
+  return { sessaoId: linha.sessaoId, empresaAtivaId: linha.empresaAtivaId, usuario: paraSessao({ ...linha, papel }, linha.versaoAceita) };
 }
 
 export async function encerrarSessao(deps: Dependencias, valorDoCookie: string | undefined | null) {

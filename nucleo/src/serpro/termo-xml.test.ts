@@ -2,7 +2,7 @@
 // pela conferência do servidor; a chave PKCS#8 do .pfx importável como não exportável.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { certificadoIcpDeTeste } from "../certificado-teste.ts";
+import { certificadoIcpDeTeste, confiancaDeTeste } from "../certificado-teste.ts";
 import { conferirTermo } from "./conferir-termo.ts";
 import { abrirCertificado, abrirChaveDoCertificado, assinarTermo } from "./termo-autorizacao.ts";
 import { assinarTermoCom, dataEmBrasilia, documentoDoTermo, montarTermo, vigenciaPadrao, vigenciaPara } from "./termo-xml.ts";
@@ -42,7 +42,7 @@ describe("assinarTermoCom (chave do WebCrypto)", () => {
     const xml = termo(info.validoAte);
     const assinado = await assinarTermoCom(xml, info.certificadoBase64, assinar);
     assert.equal(assinado, assinarTermo(xml, abrirCertificado(new Uint8Array(pfx.pfx), pfx.senha)));
-    assert.equal(conferirTermo(assinado, { contratante: PLATAFORMA, contribuinte: EMPRESA }, AGORA).assinadoPor.numero, EMPRESA);
+    assert.equal(conferirTermo(assinado, { contratante: PLATAFORMA, contribuinte: EMPRESA, confianca: confiancaDeTeste() }, AGORA).assinadoPor.numero, EMPRESA);
   });
 
   it("recusa termo já assinado ou fora do formato", async () => {

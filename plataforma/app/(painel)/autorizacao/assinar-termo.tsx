@@ -43,6 +43,7 @@ export function AssinarTermo({
   enviar,
   aoConcluir,
   aoMudarEnvio,
+  comprovacao = false,
 }: {
   empresaId: string;
   parametros: ParametrosTermo;
@@ -50,6 +51,7 @@ export function AssinarTermo({
   enviar: (empresaId: string, xml: string) => Promise<EstadoEnvio>;
   aoConcluir?: (validaAte: string) => void;
   aoMudarEnvio?: (enviando: boolean) => void; // o assistente desliga Voltar e "Fazer depois" enquanto o termo é enviado
+  comprovacao?: boolean; // a empresa aguarda comprovação: o termo é a prova (os requisitos não falam de modo guiado)
 }) {
   const assinante = useRef<Assinante | null>(null);
   const termo = useRef<string | null>(null);
@@ -174,7 +176,7 @@ export function AssinarTermo({
   const pronto = temGuardado || (marcados.certificado && marcados.govbr);
   return (
     <Cartao className="flex flex-col gap-4 px-5 py-5">
-      {!temGuardado && <Requisitos marcados={marcados} marcar={marcar} />}
+      {!temGuardado && <Requisitos marcados={marcados} marcar={marcar} comprovacao={comprovacao} />}
       <Assinador
         cnpj={parametros.empresa.cnpj}
         id="termo"

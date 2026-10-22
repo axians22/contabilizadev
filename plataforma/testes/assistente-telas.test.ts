@@ -17,7 +17,7 @@ import { explicacoes, paragrafosVisiveis, semExplicacoes, texto } from "./tela";
 
 function previa(exemplo: Exemplo): PreviaDoAssistente {
   const dados = lerRespostaCnpj(respostaGravada(exemplo));
-  return { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t" };
+  return { dados, diagnostico: diagnosticar(dados, "2026-10-16"), consultadaEm: new Date().toISOString(), token: "t", qsa: "confere" as const };
 }
 
 const nada = async () => ({ erro: "não chamado" });
@@ -34,6 +34,8 @@ function etapaAtual(html: string): string {
 }
 
 const ti = previa("ti-fator-r");
+// A empresa da plataforma, cadastrada pelo ADMIN: nasce comprovada (sem o quadro de sócios).
+const plataforma: PreviaDoAssistente = { ...ti, qsa: "plataforma" };
 // recebidaEm: hora (relógio do navegador) em que a prévia chegou; por padrão, agora.
 const em = (etapa: IdEtapa, p: PreviaDoAssistente | null = ti, empresaId: string | null = null, recebidaEm = Date.now(), resto: Partial<EstadoAssistente> = {}): EstadoAssistente => ({
   etapa,
@@ -115,6 +117,21 @@ describe("assistente de cadastro: cada etapa renderiza", () => {
     assert.match(t, /Voltar/);
     assert.match(t, /Continuar/);
     enxuta(html);
+  });
+
+  it("2. Conferir a empresa: o resultado do quadro de sócios (confere; sem quadro, a comprovação fica só pelo termo)", () => {
+    const confere = visivel(tela(em("empresa")));
+    assert.match(confere, /Você está no quadro de sócios da empresa\./);
+    // Sem quadro publicado (o empresário individual, por exemplo): aviso curto, o porquê no tooltip.
+    const semQuadro: PreviaDoAssistente = { ...ti, dados: { ...ti.dados, socios: [] }, qsa: "sem-qsa" };
+    const html = tela(em("empresa", semQuadro));
+    const t = visivel(html);
+    assert.match(t, /Sócios e administradores Não publicado pela Receita Federal/);
+    assert.match(t, /a comprovação será só pelo termo de autorização/);
+    explicado(html, /fica aguardando comprovação até você assinar o termo/);
+    assert.doesNotMatch(t, /Você está no quadro/);
+    // Os CPFs mascarados do quadro nunca aparecem.
+    assert.doesNotMatch(tela(em("empresa")), /\*\*\*\d/);
   });
 
   it("2. Conferir a empresa (CNPJ baixado): o motivo fica na tela, curto; o que fazer, no tooltip", () => {
@@ -214,7 +231,9 @@ describe("assistente de cadastro: cada etapa renderiza", () => {
     assert.match(etapaAtual(html), /5\. Diagnóstico/);
     assert.match(t, /Atendemos sua empresa/);
     assert.match(t, /Anexo III ou V\s*, conforme o Fator R/);
-    assert.match(t, /Ao confirmar, cadastramos a EXEMPLO SOFTWARE LTDA e você fica como dono dela\./);
+    assert.match(t, /Ao confirmar, cadastramos a EXEMPLO SOFTWARE LTDA\s*; ela fica aguardando a comprovação pelo termo de autorização\./);
+    // A empresa da plataforma (ADMIN) já nasce comprovada: dono na hora.
+    assert.match(visivel(tela(em("diagnostico", plataforma))), /Ao confirmar, cadastramos a EXEMPLO SOFTWARE LTDA e você fica como dono dela\./);
     // Nenhuma explicação da regra aberta na tela (28%, folha, Anexo III mais barato).
     assert.doesNotMatch(t, /28%|folha de pagamento|mais barato/);
     noTooltip(html, "fatorR");
@@ -308,8 +327,20 @@ describe("assistente de cadastro: cada etapa renderiza", () => {
     enxuta(html);
   });
 
-  it("6. Empresa cadastrada: confirmação curta, o que vem a seguir no tooltip e Continuar para o passo 7", () => {
+  it("6. Empresa cadastrada (cliente): aguarda comprovação; o porquê no tooltip e o termo a seguir", () => {
     const html = tela(em("proximos", ti, "emp-1"));
+    const t = visivel(html);
+    assert.match(t, /Passo 6 de 7 · Empresa cadastrada/);
+    assert.match(t, /A EXEMPLO SOFTWARE LTDA está cadastrada e aguarda comprovação\./);
+    assert.match(t, /A seguir, assine o termo para comprovar e liberar a plataforma\./);
+    assert.doesNotMatch(t, /você é o dono dela|\(opcional\)/);
+    explicado(html, /e-CNPJ A1 da empresa, emitido em nome do seu CPF/);
+    assert.match(html, /<button type="submit"[^>]*>Continuar<\/button>/);
+    enxuta(html);
+  });
+
+  it("6. Empresa cadastrada (empresa da plataforma): confirmação curta, o que vem a seguir no tooltip e Continuar para o passo 7", () => {
+    const html = tela(em("proximos", plataforma, "emp-1"));
     const t = visivel(html);
     assert.match(t, /Passo 6 de 7 · Empresa cadastrada/);
     assert.match(etapaAtual(html), /6\. Empresa cadastrada/);

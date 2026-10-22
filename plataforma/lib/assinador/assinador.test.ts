@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { IDBFactory } from "fake-indexeddb";
 import { completarAssinaturaRemota, verificarAssinatura } from "@contabilizadev/nucleo/assinatura";
-import { certificadoIcpDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
+import { certificadoIcpDeTeste, confiancaDeTeste, type OpcoesCertificadoIcp } from "@contabilizadev/nucleo/certificado-teste";
 import { clienteFalso } from "@contabilizadev/nucleo/serpro/cliente-falso";
 import { conferirTermo } from "@contabilizadev/nucleo/serpro/conferir-termo";
 import { xmlDctf } from "@contabilizadev/nucleo/serpro/dctf-exemplo";
@@ -75,7 +75,7 @@ describe("XML assinado com a CryptoKey: aceito pelo núcleo e pelas conferência
       const termo = termoParaAssinar(a);
       const assinado = await assinarTermoCom(termo, a.info.certificadoBase64, a.assinar);
       assert.equal(verificarAssinatura(assinado, pemDoCertificado(a.info.certificadoBase64)), true);
-      const conferido = conferirTermo(assinado, { contratante: PLATAFORMA, contribuinte: EMPRESA }, AGORA);
+      const conferido = conferirTermo(assinado, { contratante: PLATAFORMA, contribuinte: EMPRESA, confianca: confiancaDeTeste() }, AGORA);
       assert.equal(conferido.assinadoPor.numero, EMPRESA);
       assert.equal(assinado, assinarTermo(termo, abrirCertificado(new Uint8Array(eCnpj().pfx), eCnpj().senha)));
     });

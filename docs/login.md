@@ -13,6 +13,19 @@ Portados do horizons (`backend/src/auth`), com a sessão em cookie em vez de JWT
 - Papéis: `COMMON_USER`, `MANAGER` e `ADMIN`. ADMIN só pela lista `ADMIN_EMAILS`, reavaliada a cada requisição
   (sair da lista tira o ADMIN na requisição seguinte, sem novo login; gravar ADMIN direto no banco não vale nem na sessão
   aberta, e a coluna é corrigida). O ADMIN promove/rebaixa MANAGER; o MANAGER vê a lista e desativa usuários comuns.
+- **"Seus dados" no primeiro login** (21/10/2026): o usuário comum (`COMMON_USER`) preenche nome completo, CPF (um por
+  conta), data de nascimento, WhatsApp (sem confirmação), endereço completo com busca pelo CEP (banco primeiro, tabela
+  `ceps`; se a busca falhar, digita) e aceita os termos de uso e a política de privacidade (texto provisório em
+  `lib/usuarios/termos.ts`; a versão aceita e a data ficam em `dados_pessoais`). Antes disso, `exigirSessao` manda toda
+  página, layout e server action para `/meus-dados` e `comSessao` responde 403; só ficam livres `/entrar`, sair e as telas
+  da conta (`app/(conta)`: `/meus-dados` e `/termos`, com `exigirSessaoSemDados`). Versão nova dos termos
+  (`VERSAO_DOS_TERMOS`) pede o aceite de novo. ADMIN e MANAGER (inclusive a conta de desenvolvimento) entram direto; para
+  cadastrar uma empresa de cliente ou assinar o termo eles também precisam dos dados, pedidos nessa hora. Depois, os dados
+  se editam pelo menu do usuário ("Seus dados"); nome e CPF ficam travados depois de cadastrar uma empresa. Os dados
+  pessoais ficam numa tabela à parte (`dados_pessoais`), lida só por `lib/usuarios/dados-pessoais.ts` e só para o próprio
+  usuário: a área do administrador mostra no máximo nome e e-mail, e nada disso vai para o log. Regras em
+  `lib/usuarios/validacao.ts` e `portao-dos-dados.ts`; testes em `testes/portao-dos-dados.test.ts` (o portão de verdade
+  em todas as páginas, ações e rotas), `testes/dados-pessoais.test.ts` e `lib/usuarios/validacao.test.ts`.
 - **Localmente não há login.** Com `AUTH_DISABLED=true` (o padrão do `.env.exemplo` e do `.env.local` de
   desenvolvimento) e fora de produção (`NODE_ENV !== "production"`), abrir `http://localhost:3001` cai direto no
   painel: o proxy manda quem não tem cookie para `/sessao-local`, um route handler que cria (se faltar) a conta

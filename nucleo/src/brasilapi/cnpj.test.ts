@@ -25,7 +25,14 @@ test("resposta real gravada (Banco do Brasil): campos lidos como a BrasilAPI man
   assert.deepEqual(d.simples, { optante: false, dataOpcao: "2007-07-01", dataExclusao: "2007-07-01" });
   assert.deepEqual(d.mei, { optante: false, dataOpcao: "2009-07-01", dataExclusao: "2009-07-01" });
   assert.equal(d.socios.length, 3);
-  assert.deepEqual(d.socios[0], { nome: "ALAN CARLOS GUEDES DE OLIVEIRA", qualificacao: "Diretor", dataEntrada: "2023-05-17", faixaEtaria: "Entre 41 a 50 anos" });
+  assert.deepEqual(d.socios[0], {
+    nome: "ALAN CARLOS GUEDES DE OLIVEIRA",
+    qualificacao: "Diretor",
+    dataEntrada: "2023-05-17",
+    faixaEtaria: "Entre 41 a 50 anos",
+    documento: "***550179**",
+    representante: null,
+  });
   assert.equal(d.municipio, "BRASILIA");
   assert.equal(d.uf, "DF");
   assert.equal(d.dataInicioAtividade, "1966-08-01");
@@ -125,7 +132,7 @@ test("campos estranhos viram nulo em vez de quebrar (datas, booleanos e sócios 
   assert.deepEqual(d.simples, { optante: null, dataOpcao: null, dataExclusao: null });
   assert.equal(d.mei.optante, null);
   assert.equal(d.nomeFantasia, null);
-  assert.deepEqual(d.socios, [{ nome: "SÓ NOME", qualificacao: "", dataEntrada: null, faixaEtaria: null }]);
+  assert.deepEqual(d.socios, [{ nome: "SÓ NOME", qualificacao: "", dataEntrada: null, faixaEtaria: null, documento: null, representante: null }]);
 });
 
 test("manda User-Agent (sem ele a BrasilAPI responde 403 ao fetch do Node)", async () => {

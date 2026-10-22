@@ -10,13 +10,13 @@ import { cnpj } from "@contabilizadev/nucleo/serpro/cliente";
 import { respostaDeclaracoes, respostaExtrato, respostaPagamentos } from "@contabilizadev/nucleo/serpro/historico-exemplo";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { importar } from "@/lib/historico/importacao";
 import { situacaoDctf } from "@/lib/rotina/dctfweb";
 import { guiaDoMes } from "@/lib/rotina/guias";
 import { informarProLabore } from "@/lib/rotina/receitas";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -29,9 +29,9 @@ const TOKEN = "b06feea3-1ca8-49f4-bdb4-211ab006cb92";
 
 async function empresa(agora: Date) {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, { ana: perfil("ana@a.com", "sub-ana") }), "ana")).usuario;
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora, buscar: buscarExemplo("ti-anexo-iii") });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora, buscar: buscarExemplo("ti-anexo-iii") });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora });
   return { usuario, empresaId, acesso: await exigirAcessoEmpresa(t.banco, usuario, empresaId) };
 }
 

@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { IDBFactory } from "fake-indexeddb";
 import { buscarExemplo } from "@contabilizadev/nucleo/brasilapi/exemplos";
 import { verificarAssinatura } from "@contabilizadev/nucleo/assinatura";
-import { certificadoIcpDeTeste } from "@contabilizadev/nucleo/certificado-teste";
+import { certificadoIcpDeTeste, confiancaDeTeste } from "@contabilizadev/nucleo/certificado-teste";
 import { clienteFalso } from "@contabilizadev/nucleo/serpro/cliente-falso";
 import { cnpj, type Resposta } from "@contabilizadev/nucleo/serpro/cliente";
 import { xmlDctf } from "@contabilizadev/nucleo/serpro/dctf-exemplo";
@@ -19,7 +19,6 @@ import { assinanteDoArquivo, assinanteGuardado, type Assinante } from "@/lib/ass
 import { cofreDoNavegador, type Cofre } from "@/lib/assinador/cofre";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa, type AcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { conferirDctfMes, prepararTransmissaoDctf, situacaoDctf, transmitirDctfMes } from "@/lib/rotina/dctfweb";
 import type { DependenciasRotina } from "@/lib/rotina/dependencias";
 import { MENSAGENS_DA_ROTINA } from "@/lib/rotina/mensagens";
@@ -27,6 +26,7 @@ import { informarProLabore } from "@/lib/rotina/receitas";
 import { parametrosDoTermo, registrarTermo, situacaoTermo, type DependenciasTermo } from "@/lib/termo/termo";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -42,9 +42,9 @@ const ok = (dados: unknown): Resposta => ({ status: 200, dados, mensagens: [{ co
 async function empresa(exemplo: "ti-fator-r" | "ti-anexo-iii", agora: Date) {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "ana")).usuario;
   const numero = exemplo === "ti-fator-r" ? "12.345.678/0001-95" : "98.765.432/0001-98";
-  const r = await consultarParaCadastro(t.banco, usuario, numero, { segredo: SEGREDO, agora, buscar: buscarExemplo(exemplo) });
+  const r = await consultarComDados(t.banco, usuario, numero, { segredo: SEGREDO, agora, buscar: buscarExemplo(exemplo) });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora });
   return { usuario, acesso: await exigirAcessoEmpresa(t.banco, usuario, empresaId) };
 }
 
@@ -64,7 +64,7 @@ describe("termo de autorização com as duas opções (assinar e Assinar de novo
     dados: { autenticar_procurador_token: TOKEN, data_hora_expiracao: `${new Date(agora.getTime() + DIA).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" })}T23:59:59` },
     mensagens: [{ codigo: "200", texto: "Sucesso na execução." }],
   });
-  const dependencias = (cliente: DependenciasTermo["cliente"], agora: Date): DependenciasTermo => ({ banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: [], agora: () => agora });
+  const dependencias = (cliente: DependenciasTermo["cliente"], agora: Date): DependenciasTermo => ({ banco: t.banco, chave: CHAVE, cliente, contratante: PLATAFORMA, adminEmails: [], confianca: confiancaDeTeste(), agora: () => agora });
 
   // A tela: monta o termo com os parâmetros do servidor e assina com o assinador (assinarTermoCom, chave no WebCrypto).
   async function assinarEEnviar(acesso: AcessoEmpresa, a: Assinante, agora: Date) {

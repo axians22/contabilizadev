@@ -105,6 +105,9 @@ export function montarTermo(d: DadosTermo): string {
 // física (nascimento + CPF + ...); 2.16.76.1.3.3 = CNPJ da pessoa jurídica.
 export const OID_PF = "2.16.76.1.3.1";
 export const OID_CNPJ = "2.16.76.1.3.3";
+// e-CNPJ: dados do responsável pelo certificado (DOC-ICP-04): nascimento DDMMAAAA (posições 1 a 8), CPF (9 a 19), NIS,
+// RG e órgão expedidor.
+export const OID_RESPONSAVEL = "2.16.76.1.3.4";
 export type Politica = "A1" | "A2" | "A3" | "A4" | "S" | "outra";
 
 export type InfoCertificado = {
@@ -117,6 +120,10 @@ export type InfoCertificado = {
   emissor: string;
   bitsChave: number; // tamanho do módulo RSA da chave pública
   certificadoBase64: string; // DER em base64, sem quebras (para o X509Certificate)
+  // Lidos dos OIDs da ICP-Brasil (opcionais: o certificado guardado no navegador antes de 21/10/2026 não tem): o CNPJ do
+  // OID 2.16.76.1.3.3 (sem cair para o CN) e o responsável do OID 2.16.76.1.3.4.
+  cnpjIcp?: string | null;
+  responsavel?: { cpf: string; nascimento: string } | null;
 };
 
 // "Padrões técnicos de assinatura": "Tamanho da chave criptográfica: compatível com os certificados A1 e A3 (2048

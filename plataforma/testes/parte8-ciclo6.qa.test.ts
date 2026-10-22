@@ -7,12 +7,12 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import { buscarExemplo } from "@contabilizadev/nucleo/brasilapi/exemplos";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { ultimaConsulta } from "@/lib/empresas/receita";
 import { baseDoMes, ultimoMesApuravel } from "@/lib/rotina/base";
 import { avisoFatorR } from "@/lib/rotina/fator-r";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -26,9 +26,9 @@ const PERFIS = { ana: perfil("ana@a.com", "sub-ana") };
 async function empresa(exemplo: "ti-anexo-iii" | "ti-fator-r") {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "ana")).usuario;
   const numero = exemplo === "ti-anexo-iii" ? "98.765.432/0001-98" : "12.345.678/0001-95";
-  const r = await consultarParaCadastro(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
+  const r = await consultarComDados(t.banco, usuario, numero, { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo(exemplo) });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   return exigirAcessoEmpresa(t.banco, usuario, empresaId);
 }
 

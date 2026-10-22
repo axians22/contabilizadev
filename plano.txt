@@ -54,7 +54,7 @@ PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: abas Plano e Segurança em /
 10. Usuários e empresas: cada dado preso à sua empresa (um cliente nunca vê o dado de outro).
 11. Reaproveitar a parte visual: barra lateral, barra de cima, tabela, gráficos e tema.
 
-PARTE 3 - CADASTRO E DIAGNÓSTICO  [FEITO em 18/10/2026: assistente com passo 7 Autorização; nome Autorização e redirect /autorizacao]
+PARTE 3 - CADASTRO E DIAGNÓSTICO  [FEITO em 21/10/2026: dados pessoais obrigatórios, conferência com QSA e prova de posse pelo termo]
 12. Cliente digita o CNPJ; o site preenche pela BrasilAPI (razão social, CNAEs, Simples, sócios).
 13. Diagnóstico: anexo, se depende do Fator R, ou "ainda não atendemos".
 
@@ -116,10 +116,12 @@ certificado do cliente nunca vai ao servidor, nenhum segredo no git.
   (nucleo/src/serpro/cliente.ts, plataforma/lib/serpro/registro.ts). Correção: cota por empresa e reserva atômica.
 - [Média] Qualquer conta Google pode cadastrar o CNPJ de outra empresa e virar dona sem provar nada; o dono verdadeiro
   fica bloqueado (plataforma/lib/empresas/cadastro.ts, servico.ts). A posse só deve valer depois do termo assinado
-  com o e-CNPJ. Decidir com o usuário (muda o cadastro).
+  com o e-CNPJ. Decidir com o usuário (muda o cadastro). [FEITO em 22/10/2026: confere o quadro de sócios, vínculo
+  provisório até o termo, posse só com o e-CNPJ do responsável]
 - [Média] O termo de autorização não confere a cadeia do certificado, só se parece ICP-Brasil: um certificado falso
   passa e cada reenvio gasta uma chamada paga (nucleo/src/serpro/termo-autorizacao.ts). Correção: validar contra as
-  ACs raiz da ICP-Brasil e limitar reenvios. Decidir com o usuário (muda o termo).
+  ACs raiz da ICP-Brasil e limitar reenvios. Decidir com o usuário (muda o termo). [FEITO em 22/10/2026: cadeia até as
+  raízes oficiais do ITI, CNPJ e CPF do responsável conferidos e limite de 3 por hora e 10 por dia]
 - [Média] Faltam os cabeçalhos de segurança do navegador (CSP, frame-ancestors, HSTS, nosniff, Referrer-Policy): uma
   falha no site poderia usar o certificado que o cliente guardou no navegador (plataforma/next.config.ts).
 - [Média] O servidor local aceita conexões de fora da máquina (*:3003) com o login desligado e dados reais: um site
@@ -197,3 +199,19 @@ DECISÕES TOMADAS
   /plano redirecionam (308) para /admin/usuarios, /admin/plataforma e /admin/plano. Os avisos do ADMIN (certificado da
   plataforma) levam para /admin/plataforma e só aparecem para o ADMIN. Tudo o que for só de administrador vai para a
   área /admin, nunca para a aplicação comum.
+
+- Cadastro pessoal e prova de posse da empresa (21/10/2026): no primeiro login, o usuário comum (COMMON_USER; ADMIN e
+  MANAGER não, e só preenchem se forem cadastrar uma empresa que não é a da plataforma) preenche "Seus dados"
+  (nome completo, CPF, data de nascimento, WhatsApp sem confirmação, endereço completo com busca pelo CEP e aceite dos
+  termos e da privacidade); nada abre antes. O cadastro da empresa só aceita se o usuário bater com um sócio no quadro
+  de sócios da Receita (nome e a parte visível do CPF), e a empresa fica "aguardando comprovação", sem bloquear o CNPJ
+  para outra pessoa e sem mostrar conteúdo. A prova é o termo assinado com o e-CNPJ: o servidor confere a cadeia até a
+  raiz da ICP-Brasil, o CNPJ do certificado (OID 2.16.76.1.3.3) e o CPF do responsável (OID 2.16.76.1.3.4) igual ao CPF
+  do usuário; só então ele vira DONO e os cadastros provisórios de outros para aquele CNPJ caem. e-CNPJ em nome de
+  outra pessoa é recusado com o motivo explicado na tela. Não há API pública que prove o dono do CNPJ para uma empresa
+  privada (o quadro de sócios mostra o CPF mascarado; o Login Único gov.br não foi confirmado para uso privado).
+
+- Hospedagem com Coolify (22/10/2026): a produção roda num servidor (VPS) com Coolify, que publica a plataforma pelo
+  Dockerfile a partir do GitHub, com o Postgres como recurso do próprio Coolify (sem acesso público), HTTPS automático
+  e backups agendados. O passo a passo e a conferência do ambiente ficam na área do administrador, na página Produção.
+  Domínio candidato: contabilizadev.com.br (livre em 22/10/2026, registro.br).

@@ -11,10 +11,10 @@ import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { avisosDaEmpresa } from "@/lib/avisos/coleta";
 import { atualizarCaixaPostal, marcarComoVistas, resumoDaCaixa } from "@/lib/caixa-postal/caixa-postal";
 import { dadosDaEmpresa, exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import type { Situacao } from "@/lib/termo/situacao";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -30,9 +30,9 @@ const contexto = async () => ({ contribuinte: cnpj(SUPORTE), autorPedidoDados: c
 
 async function empresa() {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, PERFIS), "ana")).usuario;
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii") });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii") });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA });
   return { usuario, empresaId, acesso: await exigirAcessoEmpresa(t.banco, usuario, empresaId) };
 }
 

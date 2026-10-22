@@ -22,7 +22,7 @@ import {
 import { mascararCnpj, normalizarCnpj, validarCnpj } from "@/lib/empresas/cnpj";
 import { AUTORIZAR_DEPOIS } from "@/lib/termo/mensagens";
 import type { EstadoEnvio } from "../../autorizacao/acoes";
-import type { RespostaCadastro, RespostaConsulta } from "./acoes";
+import type { ErroDaTela, RespostaCadastro, RespostaConsulta } from "./acoes";
 import { EtapaAutorizacao } from "./etapa-autorizacao";
 import { EtapaAtividades, EtapaCnpj, EtapaDiagnostico, EtapaEmpresa, EtapaProximos, EtapaSimples } from "./etapas";
 
@@ -85,7 +85,7 @@ export function Assistente({
   inicial?: EstadoAssistente;
 }) {
   const [estado, despachar] = useReducer(reduzir, inicial);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<ErroDaTela | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, iniciar] = useTransition();
   // O termo está sendo enviado no passo 7: Voltar e "Fazer depois" ficam desligados até a resposta chegar.
@@ -107,7 +107,7 @@ export function Assistente({
   // Pesquisa o CNPJ. No diagnóstico (prévia vencida), troca a prévia ali mesmo e avisa que os dados foram atualizados.
   async function pesquisar(cnpj: string, refazendo: boolean) {
     const r = await consultar(cnpj);
-    if ("erro" in r) return setErro(r.erro);
+    if ("erro" in r) return setErro(r);
     // A idade da prévia conta a partir de agora, no relógio do navegador (o do servidor pode estar diferente).
     despachar({ tipo: "consultou", previa: r.previa, agora: Date.now() });
     if (refazendo) setAviso(PESQUISADA_DE_NOVO);
@@ -143,7 +143,7 @@ export function Assistente({
       }
       // O servidor recusou a prévia (relógio diferente, por exemplo): pesquisa de novo em vez de deixar o cliente preso.
       if (r.expirou) return pesquisar(cnpj, true);
-      setErro(r.erro);
+      setErro(r);
     });
   }
 
@@ -169,7 +169,7 @@ export function Assistente({
       );
       break;
     case "empresa":
-      conteudo = p && <EtapaEmpresa dados={p.dados} />;
+      conteudo = p && <EtapaEmpresa dados={p.dados} qsa={p.qsa} />;
       break;
     case "atividades":
       conteudo = p && <EtapaAtividades diagnostico={p.diagnostico} />;
@@ -260,8 +260,21 @@ export function Assistente({
             </p>
           )}
           {erro && (
-            <p role="alert" className="rounded-xl bg-warn-soft px-4 py-3 text-sm text-bad">
-              {erro}
+            <p role="alert" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-warn-soft px-4 py-3 text-sm text-bad">
+              <span>
+                {erro.erro}
+                {erro.explicacao && (
+                  <>
+                    {" "}
+                    <Explicacao rotulo={erro.explicacao.titulo} titulo={erro.explicacao.titulo} texto={erro.explicacao.texto} />
+                  </>
+                )}
+              </span>
+              {erro.seusDados && (
+                <Link href="/meus-dados" className="font-semibold underline underline-offset-2">
+                  Preencher Seus dados
+                </Link>
+              )}
             </p>
           )}
           {(acao || podeVoltar(estado)) &&

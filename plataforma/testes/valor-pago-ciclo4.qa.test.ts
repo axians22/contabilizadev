@@ -13,7 +13,6 @@ import { GuiasDoMes } from "@/app/(painel)/guias-do-mes";
 import { pagamentos } from "@/banco/esquema";
 import { entrarComGoogle } from "@/lib/autenticacao/servico";
 import { exigirAcessoEmpresa } from "@/lib/empresas/acesso";
-import { cadastrarPelaPrevia, consultarParaCadastro } from "@/lib/empresas/cadastro";
 import { importar } from "@/lib/historico/importacao";
 import { valorDaGuia } from "@/lib/rotina/botoes-guia";
 import { guiaDoMes } from "@/lib/rotina/guias";
@@ -21,6 +20,7 @@ import { contextoSerpro, type DependenciasTermo } from "@/lib/termo/termo";
 import { prepararBancoDeTeste, type BancoDeTeste } from "./banco-de-teste";
 import { deps as depsLogin, perfil, SEGREDO } from "./apoio";
 import { semExplicacoes, texto } from "./tela";
+import { cadastrarComprovada, consultarComDados } from "./apoio-empresa";
 
 let t: BancoDeTeste;
 before(async () => (t = await prepararBancoDeTeste()));
@@ -38,9 +38,9 @@ const ANTERIORES = {
 
 async function comHistorico(docs: Record<string, unknown>[]) {
   const usuario = (await entrarComGoogle(depsLogin(t.banco, { admin: perfil(ADMIN, "sub-admin") }, { adminEmails: [ADMIN] }), "admin")).usuario;
-  const r = await consultarParaCadastro(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA });
+  const r = await consultarComDados(t.banco, usuario, "98.765.432/0001-98", { segredo: SEGREDO, agora: AGORA, buscar: buscarExemplo("ti-anexo-iii"), cnpjReservado: PLATAFORMA });
   assert.equal(r.tipo, "previa");
-  const empresaId = await cadastrarPelaPrevia(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA, cnpjReservado: PLATAFORMA });
+  const empresaId = await cadastrarComprovada(t.banco, usuario, r.previa.token, { segredo: SEGREDO, agora: AGORA, cnpjReservado: PLATAFORMA });
   const acesso = await exigirAcessoEmpresa(t.banco, usuario, empresaId);
   const PAG: Resposta = {
     status: 200,

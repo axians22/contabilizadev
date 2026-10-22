@@ -30,7 +30,11 @@ export type IdEtapa = (typeof ETAPAS)[number]["id"];
 export type Etapa = { id: IdEtapa; nome: string };
 
 // A prévia que o assistente precisa (a do cadastro, assinada pelo servidor).
-export type PreviaDoAssistente = Pick<Previa, "dados" | "diagnostico" | "consultadaEm" | "token">;
+// qsa: o resultado da conferência com o quadro de sócios ("plataforma" = a empresa da plataforma, que já nasce comprovada).
+export type PreviaDoAssistente = Pick<Previa, "dados" | "diagnostico" | "consultadaEm" | "token" | "qsa">;
+
+// Depois do cadastro, a empresa aguarda comprovação (o termo é a prova), menos a da plataforma.
+export const aguardaComprovacao = (previa: Pick<PreviaDoAssistente, "qsa"> | null) => previa?.qsa !== "plataforma";
 
 // Passo 7, preparado pelo servidor logo depois do cadastro: a empresa da própria plataforma já está autorizada (sem
 // termo); as outras assinam com os parâmetros do termo; se a assinatura não está disponível (configuração da

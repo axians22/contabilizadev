@@ -6,7 +6,7 @@ import { abaDaEmpresa } from "@/lib/abas";
 import { exigirConteudo } from "@/lib/empresas/portao-servidor";
 import { formatarCnpj } from "@/lib/empresas/cnpj";
 import { dadosDaReceita, VALIDADE_DOS_DADOS_DIAS } from "@/lib/empresas/receita";
-import { atualizarDadosAcao, removerEmpresaAcao } from "./acoes";
+import { atualizarDadosAcao, desistirDoCadastroAcao, removerEmpresaAcao } from "./acoes";
 import { BotaoAtualizar } from "./botao-atualizar";
 import { FichaReceita } from "./ficha";
 import { RemoverEmpresa } from "./remover-empresa";
@@ -36,6 +36,19 @@ export default async function DadosDaEmpresa({ searchParams }: { searchParams: P
         <PortaoFechado aba={abaDaEmpresa("/empresa")} portao={portao} />
         {/* Sem plano, o dono ainda pode remover a empresa (remover não depende da assinatura). */}
         {portao.estado === "sem-plano" && <RemoverEmpresa key={portao.empresa.id} empresa={portao.empresa} remover={removerEmpresaAcao} />}
+        {/* Aguardando comprovação: dá para desistir do cadastro (só o vínculo provisório deste usuário cai). */}
+        {portao.estado === "aguardando" && (
+          <form action={desistirDoCadastroAcao} className="flex items-center gap-1 text-sm">
+            <input type="hidden" name="empresaId" value={portao.empresa.id} />
+            <button type="submit" className={`${botaoLink} cursor-pointer`}>
+              Desistir deste cadastro
+            </button>
+            <Explicacao
+              rotulo="O que acontece se eu desistir?"
+              texto="A empresa sai da sua lista. Nada foi guardado dela na sua conta; se quiser, cadastre de novo depois."
+            />
+          </form>
+        )}
       </>
     );
   }

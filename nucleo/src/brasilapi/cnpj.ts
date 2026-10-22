@@ -22,7 +22,17 @@ export class ErroConsultaCnpj extends Error {
 }
 
 export type CnaeReceita = { codigo: string; descricao: string }; // código só com dígitos (7)
-export type Socio = { nome: string; qualificacao: string; dataEntrada: string | null; faixaEtaria: string | null };
+// documento: o CPF do sócio como a Receita publica, mascarado ("***123456**": só da 4ª à 9ª posição), ou o CNPJ do
+// sócio pessoa jurídica. representante: o representante legal, quando a Receita informa (sócio menor, espólio, PJ...).
+// Os dois são opcionais: consultas guardadas antes de 21/10/2026 não têm.
+export type Socio = {
+  nome: string;
+  qualificacao: string;
+  dataEntrada: string | null;
+  faixaEtaria: string | null;
+  documento?: string | null;
+  representante?: { nome: string; documento: string | null } | null;
+};
 // optante: true/false como a Receita informa; null quando ela não informa.
 export type Opcao = { optante: boolean | null; dataOpcao: string | null; dataExclusao: string | null };
 // Endereço da sede como a Receita guarda (cep com 8 dígitos). Campo que a Receita não informa vem null.
@@ -105,8 +115,18 @@ export function lerRespostaCnpj(json: unknown): DadosCnpj {
   const socios = Array.isArray(o.qsa)
     ? o.qsa.map(objeto).flatMap((s) => {
         const nome = texto(s?.nome_socio);
+        const nomeRepresentante = texto(s?.nome_representante_legal);
         return nome
-          ? [{ nome, qualificacao: texto(s?.qualificacao_socio) ?? "", dataEntrada: data(s?.data_entrada_sociedade), faixaEtaria: texto(s?.faixa_etaria) }]
+          ? [
+              {
+                nome,
+                qualificacao: texto(s?.qualificacao_socio) ?? "",
+                dataEntrada: data(s?.data_entrada_sociedade),
+                faixaEtaria: texto(s?.faixa_etaria),
+                documento: texto(s?.cnpj_cpf_do_socio),
+                representante: nomeRepresentante ? { nome: nomeRepresentante, documento: texto(s?.cpf_representante_legal) } : null,
+              },
+            ]
           : [];
       })
     : [];

@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { certificadoDeTeste, certificadoIcpDeTeste, type OpcoesCertificadoIcp } from "../certificado-teste.ts";
+import { certificadoDeTeste, certificadoIcpDeTeste, type OpcoesCertificadoIcp, confiancaDeTeste } from "../certificado-teste.ts";
 import { conferirTermo, ErroTermo, type Esperado } from "./conferir-termo.ts";
 import { abrirCertificado, assinarTermo, dataEmBrasilia, montarTermo, somarDias, TEXTO_TERMO, type DadosTermo } from "./termo-autorizacao.ts";
 
 const PLATAFORMA = { numero: "11444777000161", nome: "PLATAFORMA DE TESTE LTDA" };
 const EMPRESA = "11222333000181";
-const ESPERADO: Esperado = { contratante: PLATAFORMA, contribuinte: EMPRESA };
+const ESPERADO: Esperado = { contratante: PLATAFORMA, contribuinte: EMPRESA, confianca: confiancaDeTeste() };
 const AGORA = new Date();
 const HOJE = dataEmBrasilia(AGORA);
 const DIA = 24 * 60 * 60 * 1000;
@@ -166,4 +166,36 @@ test("recusa assinatura com qualquer nó ou atributo fora do layout, mesmo fora 
 test("as mensagens de erro (que vão para a tela) não citam o fornecedor", async () => {
   const fonte = (await import("node:fs")).readFileSync(new URL("./conferir-termo.ts", import.meta.url), "utf8");
   for (const m of fonte.matchAll(/new ErroTermo\(([^)]*)\)/g)) assert.doesNotMatch(m[1], /serpro|integra contador/i, m[1]);
+});
+
+// ---- Prova de posse (21/10/2026): cadeia até a raiz da ICP-Brasil, CNPJ do OID 2.16.76.1.3.3 e CPF do responsável
+// (OID 2.16.76.1.3.4, posições 9 a 19) igual ao de quem envia.
+
+const CPF = "52912345634"; // CPF_RESPONSAVEL_DE_TESTE
+
+test("cadeia: aceita emitido pela raiz ou por intermediária; recusa forjada, autoassinada e intermediária vencida", () => {
+  assert.equal(conferirTermo(termoAssinado({ cadeia: "intermediaria" }), ESPERADO, AGORA).assinadoPor.numero, EMPRESA);
+  assert.throws(() => conferirTermo(termoAssinado({ cadeia: "forjada" }), ESPERADO, AGORA), /não chega a uma AC raiz oficial/);
+  assert.throws(() => conferirTermo(termoAssinado({ autoassinado: true }), ESPERADO, AGORA), /autoassinado/);
+  assert.throws(() => conferirTermo(termoAssinado({ cadeia: "intermediaria-vencida" }), ESPERADO, AGORA), /fora da validade/);
+  // Sem a confiança de teste, valem as raízes oficiais: o certificado de teste não passa.
+  assert.throws(() => conferirTermo(VALIDO, { contratante: PLATAFORMA, contribuinte: EMPRESA }, AGORA), /não chega a uma AC raiz oficial/);
+});
+
+test("CNPJ: o do certificado tem de ser o da empresa cadastrada", () => {
+  assert.throws(() => conferirTermo(VALIDO, { ...ESPERADO, contribuinte: "11444777000161" }, AGORA), /outro CNPJ/);
+  assert.equal(conferirTermo(VALIDO, ESPERADO, AGORA).certificado.cnpjIcp, EMPRESA);
+});
+
+test("responsável: o CPF do OID 2.16.76.1.3.4 tem de ser o de quem envia", () => {
+  assert.equal(conferirTermo(VALIDO, { ...ESPERADO, cpfResponsavel: CPF }, AGORA).certificado.responsavel?.cpf, CPF);
+  assert.throws(
+    () => conferirTermo(VALIDO, { ...ESPERADO, cpfResponsavel: "11144477735" }, AGORA),
+    (e: unknown) => e instanceof ErroTermo && e.message === "Este e-CNPJ está em nome de outro responsável (CPF ***.123.456-**). Quem assina o termo precisa entrar com a própria conta.",
+  );
+  assert.throws(() => conferirTermo(termoAssinado({ responsavel: null }), { ...ESPERADO, cpfResponsavel: CPF }, AGORA), /não traz o CPF do responsável/);
+  // A data de nascimento vem antes do CPF (posições 1 a 8): outro nascimento, mesmo CPF, passa.
+  const outroNascimento = termoAssinado({ responsavel: { cpf: CPF, nascimento: "31121999" } });
+  const r = conferirTermo(outroNascimento, { ...ESPERADO, cpfResponsavel: CPF }, AGORA);
+  assert.deepEqual(r.certificado.responsavel, { cpf: CPF, nascimento: "31121999" });
 });

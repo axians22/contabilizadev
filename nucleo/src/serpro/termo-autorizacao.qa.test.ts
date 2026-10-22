@@ -1,7 +1,7 @@
 // QA (Parte 4, ciclo 1 do termo): casos de borda da montagem, da assinatura e da conferência do termo de autorização.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { certificadoIcpDeTeste } from "../certificado-teste.ts";
+import { certificadoIcpDeTeste, confiancaDeTeste } from "../certificado-teste.ts";
 import { conferirTermo, ErroTermo } from "./conferir-termo.ts";
 import { classificarRecusa, lerCache, lerDataHoraBrasilia } from "./autentica-procurador.ts";
 import { abrirCertificado, assinarTermo, conferirAntesDeAssinar, dataEmBrasilia, montarTermo, vigenciaPadrao, vigenciaPara } from "./termo-autorizacao.ts";
@@ -28,7 +28,7 @@ describe("QA: termo com caracteres especiais na razão social", () => {
     const agora = new Date();
     const xml = assinado("SOFTWARE & SERVIÇOS <TI> \"ÁGUA\" D'OESTE LTDA", PLATAFORMA, agora);
     assert.match(xml, /nome="SOFTWARE &amp; SERVIÇOS &lt;TI> &quot;ÁGUA&quot; D'OESTE LTDA"/);
-    const r = conferirTermo(xml, { contratante: PLATAFORMA, contribuinte: EMPRESA }, agora);
+    const r = conferirTermo(xml, { contratante: PLATAFORMA, contribuinte: EMPRESA, confianca: confiancaDeTeste() }, agora);
     assert.equal(r.assinadoPor.nome, "SOFTWARE & SERVIÇOS <TI> \"ÁGUA\" D'OESTE LTDA");
     assert.equal(r.destinatario.nome, PLATAFORMA.nome);
   });
@@ -39,13 +39,13 @@ describe("QA: termo com caracteres especiais na razão social", () => {
     const xml = assinado("EMPRESA\t QA   LTDA", contratante, agora);
     assert.match(xml, /nome="EMPRESA QA LTDA"/);
     assert.match(xml, /nome="PLATAFORMA QA LTDA"/);
-    conferirTermo(xml, { contratante, contribuinte: EMPRESA }, agora);
+    conferirTermo(xml, { contratante, contribuinte: EMPRESA, confianca: confiancaDeTeste() }, agora);
   });
 
   it("razão social da plataforma diferente da configurada no servidor: recusado sem gastar chamada", () => {
     const agora = new Date();
     const xml = assinado("EMPRESA QA LTDA", PLATAFORMA, agora);
-    assert.throws(() => conferirTermo(xml, { contratante: { ...PLATAFORMA, nome: "OUTRA" }, contribuinte: EMPRESA }, agora), ErroTermo);
+    assert.throws(() => conferirTermo(xml, { contratante: { ...PLATAFORMA, nome: "OUTRA" }, contribuinte: EMPRESA, confianca: confiancaDeTeste() }, agora), ErroTermo);
   });
 });
 

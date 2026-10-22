@@ -50,6 +50,19 @@ confere quem assina, quem fica autorizado, a vigência e o texto oficial, e clic
 dono da empresa assina. `prepararAutorizacao` (`lib/termo/termo.ts`, só banco) dá à página e ao passo 7 a situação e os
 parâmetros do termo (ou o motivo de não poder assinar).
 
+**Prova de posse, antes de gastar a chamada** (21/10/2026; `nucleo/src/serpro/conferir-termo.ts` e `cadeia-icp.ts`): o
+servidor confere a cadeia do certificado do termo assinatura por assinatura até uma das AC raiz da ICP-Brasil guardadas em
+`nucleo/certificados/icp-brasil/raizes` (baixadas do ITI; origem, impressões digitais e como atualizar no `ORIGEM.md` de
+lá), com o caminho pelas ACs oficiais de `acs/` (o termo traz só o certificado de quem assina); a validade de cada um; que
+o CNPJ do OID 2.16.76.1.3.3 é o da empresa; e que o CPF do responsável no OID 2.16.76.1.3.4 (posições 9 a 19, depois do
+nascimento DDMMAAAA) é o CPF de "Seus dados" de quem envia. e-CNPJ em nome de outra pessoa: "Este e-CNPJ está em nome de
+outro responsável (CPF ***.xxx.xxx-**). Quem assina o termo precisa entrar com a própria conta." Assina o DONO ou quem tem o
+cadastro provisório da empresa (docs/empresas.md); aceito, o provisório vira DONO e os provisórios dos outros caem. Os
+envios que passam nessa conferência e vão para a Receita contam no limite por empresa (`LIMITE_DE_ENVIOS`: 3 por hora e 10
+por dia, tabela `envios_termo`, gravada antes do envio e fora da transação dele, então a tentativa que falha também conta).
+Nos testes, a confiança é a AC de teste (`confiancaDeTeste`, `nucleo/src/certificado-teste.ts`); sem ela, valem as raízes
+oficiais e o certificado de teste é recusado.
+
 **Servidor, banco primeiro** (`lib/termo/termo.ts`, tabela `termos_autorizacao`): `registrarTermo` confere o termo de novo
 (`conferirTermo`), trava a empresa (`FOR UPDATE`, então duplo clique ou duas abas chamam uma vez só), envia e guarda o
 termo e o token cifrados com AES-256-GCM (`lib/termo/cifra.ts`, `TOKEN_CHAVE`, IV por registro, empresa e registro como

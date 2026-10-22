@@ -48,7 +48,7 @@ function previa(exemplo: Exemplo, mexer?: (r: Record<string, unknown>) => void):
   const r = respostaGravada(exemplo);
   mexer?.(r);
   const dados = lerRespostaCnpj(r);
-  return { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: CONSULTADA_EM, token: `token-${exemplo}` };
+  return { dados, diagnostico: diagnosticar(dados, HOJE), consultadaEm: CONSULTADA_EM, token: `token-${exemplo}`, qsa: "confere" };
 }
 
 const aplicar = (estado: EstadoAssistente, ...eventos: EventoAssistente[]) => eventos.reduce(reduzir, estado);
