@@ -12,7 +12,8 @@
   cada ação começam por `exigirAreaDoAdmin(endereço)`. Visão geral (`/admin`, só ADMIN: os avisos da plataforma, o banco
   de dados e os atalhos; o MANAGER que abre `/admin` vai para `/admin/usuarios`), Usuários (`/admin/usuarios`, a única
   página do MANAGER; ADMIN também), Certificado da plataforma (`/admin/plataforma`, só ADMIN), Custos (`/admin/custos`,
-  só ADMIN) e Plano do projeto (`/admin/plano`, só ADMIN). Os endereços antigos (`/usuarios`, `/config/plataforma`, `/plano`) redirecionam (308).
+  só ADMIN), Produção (`/admin/producao`, só ADMIN: passo a passo do Coolify e conferência do ambiente, ver
+  [producao.md](producao.md)) e Plano do projeto (`/admin/plano`, só ADMIN). Os endereços antigos (`/usuarios`, `/config/plataforma`, `/plano`) redirecionam (308).
   O Plano do projeto lê o `plano.txt` a cada acesso (`lib/plano.ts`, a única fonte) e tem duas abas, com a aba no
   endereço: Plano (introdução, partes e as listas — MVP, Backlog, Decisões; título de lista em maiúsculas, com um
   complemento opcional em minúsculas entre parênteses no fim, como `BACKLOG (fora do plano por enquanto)`) e Segurança
@@ -51,6 +52,11 @@
   (`exigirAreaDoAdmin("/admin/plataforma")`: MANAGER, COMMON_USER e o login desligado sem ser ADMIN recebem 404; o serviço
   confere de novo e recusa com 403). Mostra também a situação da integração (Receita Federal, eSocial e a assinatura do
   termo de autorização, com o motivo técnico). Veja "Certificado da plataforma" abaixo.
+- `app/admin/producao/` — **Produção**, na área do administrador, só ADMIN (`exigirAreaDoAdmin("/admin/producao")`;
+  MANAGER e COMMON_USER recebem 404): o passo a passo do Coolify (`lib/producao/guia.ts`, espelhado em
+  [producao.md](producao.md)) e, no topo, a conferência do ambiente (`lib/producao/conferencia.ts` e `servidor.ts`), lida
+  só do próprio servidor e sem mostrar valor de segredo. A rota pública `GET /api/saude` (`app/api/saude/route.ts`) é o
+  health check.
 - `app/admin/custos/` — **Custos**, na área do administrador, só ADMIN (`exigirAreaDoAdmin("/admin/custos")`; MANAGER e
   COMMON_USER recebem 404): o **custo por cliente** das chamadas ao Serpro, lido só de `serpro_chamadas` (a tela nunca
   chama Serpro, BrasilAPI nem eSocial). Cálculo em `lib/serpro/custos.ts`:

@@ -18,7 +18,10 @@ const APP = path.join(import.meta.dirname, "..", "app");
 // A página de um endereço: dentro do grupo (painel) (a aplicação) ou fora dele (a área do administrador, app/admin).
 const paginaDa = (href: string) => {
   const partes = href.split("?")[0].split("/").filter(Boolean);
-  return partes[0] === "admin" ? path.join(APP, ...partes, "page.tsx") : path.join(APP, "(painel)", ...partes, "page.tsx");
+  if (partes[0] === "admin") return path.join(APP, ...partes, "page.tsx");
+  // As telas da conta ("Seus dados" e os termos) ficam fora do painel, no grupo (conta).
+  if (["meus-dados", "termos"].includes(partes[0])) return path.join(APP, "(conta)", ...partes, "page.tsx");
+  return path.join(APP, "(painel)", ...partes, "page.tsx");
 };
 // Os fontes de app/ e lib/ (menos a lista de redirecionamentos e os testes), para procurar links antigos.
 const fontes = () =>
@@ -104,8 +107,8 @@ describe("cada aba de empresa passa pelo portão", () => {
   it("barra da área do administrador: grupo 'Administração'; MANAGER só vê os usuários, ADMIN tudo, COMMON_USER nada", () => {
     const itens = (papel: "ADMIN" | "MANAGER" | "COMMON_USER") => gruposDaAdministracao(papel).flatMap((g) => g.itens.map((i) => i.href));
     assert.deepEqual(gruposDaAdministracao("ADMIN").map((g) => g.titulo), ["Administração"]);
-    assert.deepEqual(itens("ADMIN"), ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/custos", "/admin/plano"]);
-    assert.deepEqual(gruposDaAdministracao("ADMIN")[0].itens.map((i) => i.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Custos", "Plano do projeto"]);
+    assert.deepEqual(itens("ADMIN"), ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/custos", "/admin/producao", "/admin/plano"]);
+    assert.deepEqual(gruposDaAdministracao("ADMIN")[0].itens.map((i) => i.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Custos", "Produção", "Plano do projeto"]);
     assert.deepEqual(itens("MANAGER"), ["/admin/usuarios"]);
     assert.deepEqual(itens("COMMON_USER"), []);
     // A visão geral só fica ativa na própria página.
@@ -220,11 +223,15 @@ describe("cada aba de empresa passa pelo portão", () => {
   });
 
   it("as ações que leem ou gravam dado da empresa conferem vínculo e plano pelo portão", () => {
-    for (const rel of ["(painel)/empresa/acoes.ts", "(painel)/autorizacao/acoes.ts"]) {
+    // Dados da empresa: o portão do conteúdo. Autorização: o portão do termo, que aceita o cadastro provisório (o termo é a
+    // prova) e, para a empresa já comprovada, confere o plano como o do conteúdo.
+    for (const [rel, porta] of [["(painel)/empresa/acoes.ts", /exigirAcessoAoConteudo\(/], ["(painel)/autorizacao/acoes.ts", /exigirAcessoParaOTermo\(/]] as const) {
       const fonte = readFileSync(path.join(APP, rel), "utf8");
-      assert.match(fonte, /exigirAcessoAoConteudo\(/, rel);
+      assert.match(fonte, porta, rel);
       assert.doesNotMatch(fonte, /exigirAcessoEmpresa\(/, rel);
     }
+    const portao = readFileSync(path.join(APP, "..", "lib", "empresas", "portao.ts"), "utf8");
+    assert.match(portao, /export async function exigirAcessoParaOTermo\([\s\S]*?if \(ehProvisorio\(acesso\)\) return acesso;\s*if \(!\(await \(opcoes\.planoAtivo \?\? planoAtivo\)\(\{ id: acesso\.empresaId \}\)\)\) throw new SemPlanoAtivo\(\);/);
   });
 
   it("o layout só calcula o aviso do sino (dado da empresa) com o portão liberado", () => {

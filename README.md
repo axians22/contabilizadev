@@ -10,6 +10,7 @@ sozinha, com a própria autorização. O plano, por partes, está em [`plano.txt
 | `nucleo/` | Regras fiscais (Simples, Fator R, guias) e integrações (Receita Federal, eSocial), em TypeScript puro. Nada fixo de empresa. |
 | `plataforma/` | O site: Next.js 16, Tailwind 4, Drizzle + Postgres 17. Usa o núcleo como `@contabilizadev/nucleo`. |
 | `docker/` | `docker-compose.yml` (banco e, opcionalmente, a plataforma) e `Dockerfile`. |
+| `nucleo/certificados/icp-brasil/` | Raízes e ACs oficiais da ICP-Brasil (do ITI), para conferir a cadeia do e-CNPJ do termo. Origem no `ORIGEM.md`. |
 | `docs/` | Documentação por assunto (abaixo) e os relatórios de cada parte em `docs/tarefas/`. |
 
 ## Como rodar
@@ -24,7 +25,9 @@ npm run banco:migrar                     # cria as tabelas
 npm run dev                              # http://localhost:3001
 ```
 
-No desenvolvimento não há login: com `AUTH_DISABLED=true` o site abre direto como administrador.
+No desenvolvimento não há login: com `AUTH_DISABLED=true` o site abre direto como administrador. O usuário comum, no
+primeiro acesso, preenche "Seus dados" (`/meus-dados`) antes de qualquer coisa; o administrador só precisa deles para
+cadastrar uma empresa de cliente ou assinar o termo.
 
 Variáveis do `plataforma/.env.local` (os detalhes estão no `.env.exemplo`):
 
@@ -51,11 +54,13 @@ o Google: usam clientes falsos e respostas gravadas.
 
 - [Desenvolvimento](docs/desenvolvimento.md): banco, Docker, comandos e testes em detalhe.
 - [Núcleo](docs/nucleo.md) e [Plataforma](docs/plataforma.md): como o código está organizado.
-- [Login e autorização](docs/login.md) e [Empresas e cadastro](docs/empresas.md).
+- [Login e autorização](docs/login.md) (com "Seus dados") e [Empresas e cadastro](docs/empresas.md) (quadro de sócios e
+  prova de posse pelo termo).
 - [Certificados](docs/certificados.md): o da plataforma e a assinatura do cliente no navegador.
 - [Autorização (termo)](docs/autorizacao.md), com o roteiro do teste real.
 - [Histórico](docs/historico.md), [Rotina do mês](docs/rotina.md), [eSocial](docs/esocial.md) e
   [Painel, mensagens e avisos](docs/painel.md).
+- [Produção com o Coolify](docs/producao.md): passo a passo, conferência do ambiente (`/admin/producao`) e rota de saúde.
 - [Time de agentes](docs/agentes.md): como cada parte do plano é entregue (engenheiro → QA → tech lead).
 
 ## Regras

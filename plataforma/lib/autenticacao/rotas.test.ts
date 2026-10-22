@@ -4,7 +4,12 @@ import { decidirAcesso, destinoAoSair, enderecoSemSessao, ROTA_DA_SESSAO_LOCAL, 
 
 describe("fechado por padrão", () => {
   it("a lista de rotas públicas é exatamente esta", () => {
-    assert.deepEqual([...ROTAS_PUBLICAS], ["/entrar"]);
+    assert.deepEqual([...ROTAS_PUBLICAS], ["/entrar", "/api/saude"]);
+  });
+  it("a rota de saúde (health check do Coolify) abre sem cookie; as outras APIs continuam com 401", () => {
+    assert.equal(decidirAcesso("/api/saude", false), "seguir");
+    assert.equal(decidirAcesso("/api/saudex", false), "401");
+    assert.equal(decidirAcesso("/api/sessao", false), "401");
   });
   it("só /entrar (e o que está embaixo dela) é público", () => {
     assert.equal(rotaPublica("/entrar"), true);

@@ -48,6 +48,8 @@ const LIB_DA_TELA = ["lib/termo", "lib/empresas", "lib/usuarios", "lib/autentica
 const NUCLEO_DA_TELA = [
   "lib/abas.ts",
   "../nucleo/src/brasilapi/cnpj.ts",
+  "../nucleo/src/brasilapi/cep.ts",
+  "../nucleo/src/serpro/cadeia-icp.ts",
   "../nucleo/src/diagnostico.ts",
   "../nucleo/src/cnae.ts",
   "../nucleo/src/formato.ts",

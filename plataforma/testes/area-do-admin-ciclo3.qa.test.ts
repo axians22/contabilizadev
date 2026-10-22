@@ -14,9 +14,9 @@ const decidir = (papel: "ADMIN" | "MANAGER" | "COMMON_USER", href: string) => {
 describe("QA ciclo 3: a barreira da área por papel", () => {
   it("tabela papel × página", () => {
     const esperado: Record<string, Record<string, string>> = {
-      COMMON_USER: { "/admin": "404", "/admin/usuarios": "404", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/plano": "404" },
-      MANAGER: { "/admin": "redirect /admin/usuarios", "/admin/usuarios": "abre", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/plano": "404" },
-      ADMIN: { "/admin": "abre", "/admin/usuarios": "abre", "/admin/plataforma": "abre", "/admin/custos": "abre", "/admin/plano": "abre" },
+      COMMON_USER: { "/admin": "404", "/admin/usuarios": "404", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/producao": "404", "/admin/plano": "404" },
+      MANAGER: { "/admin": "redirect /admin/usuarios", "/admin/usuarios": "abre", "/admin/plataforma": "404", "/admin/custos": "404", "/admin/producao": "404", "/admin/plano": "404" },
+      ADMIN: { "/admin": "abre", "/admin/usuarios": "abre", "/admin/plataforma": "abre", "/admin/custos": "abre", "/admin/producao": "abre", "/admin/plano": "abre" },
     };
     for (const [papel, linhas] of Object.entries(esperado))
       for (const p of PAGINAS_DO_ADMIN) assert.equal(decidir(papel as never, p.href), linhas[p.href], `${papel} ${p.href}`);

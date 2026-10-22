@@ -27,8 +27,9 @@ describe("QA: leitor do plano.txt", () => {
     assert.ok(s.itens.every((i) => !/^\[/.test(i.texto) && !/\s{2,}/.test(i.texto)));
     assert.match(s.itens[0].texto, /Correção: cota por empresa e reserva atômica\.$/);
     const c = contagemDeSeguranca(s.itens);
-    assert.deepEqual(c.porGravidade.map((g) => g.total), [1, 7, 6, 1]);
-    assert.equal(c.feitos, 0);
+    // Dois itens de Média já feitos (posse pelo termo e cadeia do certificado, Parte 3 em 22/10/2026).
+    assert.deepEqual(c.porGravidade.map((g) => g.total), [1, 5, 6, 1]);
+    assert.equal(c.feitos, 2);
     // A seção seguinte (DECISÕES TOMADAS) não entra na segurança.
     assert.ok(!s.itens.some((i) => /Postgres 17 \(Docker/.test(i.texto)));
   });

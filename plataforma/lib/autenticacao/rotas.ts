@@ -1,5 +1,6 @@
 // Fechado por padrão: só as rotas desta lista abrem sem sessão. Rota nova nasce protegida.
-export const ROTAS_PUBLICAS = ["/entrar"] as const;
+// /api/saude é o health check do Coolify (sem cookie): responde só {ok}, sem dado nenhum (lib/producao/saude.ts).
+export const ROTAS_PUBLICAS = ["/entrar", "/api/saude"] as const;
 
 // Abre a sessão da conta de desenvolvimento e volta para o painel. Só existe com o login desligado (fora de
 // produção); com o login ligado ela é uma rota fechada como as outras (e o handler recusa de novo).

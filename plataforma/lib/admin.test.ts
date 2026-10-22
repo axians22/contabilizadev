@@ -6,7 +6,7 @@ const HREFS = PAGINAS_DO_ADMIN.map((p) => p.href);
 
 describe("área do administrador: quem vê o quê (fechado por padrão)", () => {
   it("as páginas da área, na ordem, todas abaixo de /admin", () => {
-    assert.deepEqual(HREFS, ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/custos", "/admin/plano"]);
+    assert.deepEqual(HREFS, ["/admin", "/admin/usuarios", "/admin/plataforma", "/admin/custos", "/admin/producao", "/admin/plano"]);
     for (const h of HREFS) assert.ok(h === AREA_DO_ADMIN || h.startsWith(`${AREA_DO_ADMIN}/`), h);
   });
 
@@ -26,13 +26,14 @@ describe("área do administrador: quem vê o quê (fechado por padrão)", () => 
     assert.equal(podeVerNoAdmin("MANAGER", "/admin/plataforma"), false);
     assert.equal(podeVerNoAdmin("MANAGER", "/admin/plano"), false);
     assert.equal(podeVerNoAdmin("MANAGER", "/admin/custos"), false);
+    assert.equal(podeVerNoAdmin("MANAGER", "/admin/producao"), false);
     assert.deepEqual(paginasDoAdmin("MANAGER").map((p) => p.nome), ["Usuários"]);
   });
 
   it("ADMIN vê tudo", () => {
     assert.equal(entraNaAreaDoAdmin("ADMIN"), true);
     for (const h of HREFS) assert.equal(podeVerNoAdmin("ADMIN", h), true, h);
-    assert.deepEqual(paginasDoAdmin("ADMIN").map((p) => p.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Custos", "Plano do projeto"]);
+    assert.deepEqual(paginasDoAdmin("ADMIN").map((p) => p.nome), ["Visão geral", "Usuários", "Certificado da plataforma", "Custos", "Produção", "Plano do projeto"]);
   });
 
   it("endereço fora da lista não é liberado para ninguém (nem para o ADMIN)", () => {

@@ -2,7 +2,7 @@
 
 ## Situação
 
-**Concluída em 21/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 2 da sétima rodada de ajustes (abas Plano e Segurança). Não há pendências (ver seções Ajustes).
+**Concluída em 22/10/2026.** Aprovada pelo QA e pelo tech lead no ciclo 3 da oitava rodada de ajustes (página Produção com o guia do Coolify). Não há pendências (ver seções Ajustes).
 
 ## Resumo da entrega
 
@@ -293,3 +293,48 @@ Pedido do usuário: "Quero custo mensal e total".
 ### Situação
 
 **Aprovada.** `npm test`: núcleo 376/376, plataforma 1406/1406; `typecheck` e `lint` sem erros. Na 3003: aba Segurança com 1 Alta, 7 Média, 6 Baixa, 1 Decisão e 0 Feitos; aba inválida cai em Plano; nenhuma chamada nova em `serpro_chamadas`. Parte 2 marcada como FEITO em 21/10/2026 no `plano.txt`. Sem pendências.
+
+## Ajustes (página Produção com o guia do Coolify, 22/10/2026)
+
+### Correções pedidas
+
+1. Página interna `/admin/producao` ("Produção"), só para ADMIN, explicando a hospedagem com o Coolify.
+2. Passo a passo em 9 seções com checklist e a fonte de cada passo, fiel à documentação oficial do Coolify.
+3. Conferência do ambiente no topo (OK/Falta), sem mostrar nenhum segredo e sem chamar serviço externo.
+4. Rota pública `GET /api/saude` para o health check (200/503, sem cache, sem dados internos).
+5. Visual igual ao resto do admin (`<Explicacao>`, Tabela única, comando copiável) e `docs/producao.md` espelhando a página.
+6. **[baixa] (tech lead, ciclo 1)** Comentário de `FatosDoServidor.protocolo` prometia uma alternativa inexistente.
+7. **[baixa] (tech lead, ciclo 1)** Passos `conferencia` e `conferir-https` citavam fonte que não sustentava o texto.
+8. **[baixa] (tech lead, ciclo 1)** Os 4 GB de RAM apareciam como se fossem da documentação do Coolify.
+9. **[baixa] (QA, ciclo 2)** Timeout dos backups dava a entender limite de 60 s (o padrão do job é 3600 s).
+10. **[baixa] (QA, ciclo 2)** Ubuntu fora de LTS "pede instalação manual" atribuído à documentação, que só recomenda LTS.
+
+### Como cada uma foi resolvida
+
+1. `app/admin/producao/` com `exigirAreaDoAdmin("/admin/producao")`, entrada em `lib/admin.ts` e ícone na barra; COMMON_USER e MANAGER recebem 404.
+2. `lib/producao/guia.ts`: Servidor, Domínio/HTTPS, Banco, Aplicação, Variáveis, Login Google, Backups, Monitoramento, Antes de abrir; migrações no CMD da imagem; sugestões próprias marcadas como "Sugestão nossa".
+3. `lib/producao/conferencia.ts` (função pura, 15 itens) e `lib/producao/servidor.ts` (fatos do servidor, migrações contra o `_journal.json`, certificado guardado com mais de 30 dias).
+4. `app/api/saude/route.ts` + `lib/producao/saude.ts`: `{ok}` com 200/503, limite de 3 s, `no-store`, erro só no log; incluída em `ROTAS_PUBLICAS`.
+5. `conteudo.tsx` e `comando.tsx`; `docs/producao.md` com teste de espelhamento de passos, fontes e detalhes; links no README e em `docs/plataforma.md`.
+6. Comentário corrigido: sem o cabeçalho, `null` e o item fica Falta.
+7. Nova fonte `F.conferencia` (`plataforma/lib/producao/conferencia.ts`), usada nos dois passos (`conferir-https` junto com `F.dominios`).
+8. Detalhe dividido: o que a documentação diz (aumentar a RAM conforme a carga) e "Sugestão nossa, não da documentação: … 4 GB".
+9. "Sem valor, o job usa 3600 s; se definir o Timeout, use pelo menos 60 s para dumps maiores."
+10. "A documentação recomenda Ubuntu LTS (20.04, 22.04 ou 24.04); fora de LTS o instalador pode se comportar diferente, e aí use a instalação manual."
+
+### Ciclos desta rodada
+
+| Ciclo | Etapa | Resultado |
+|---|---|---|
+| 1 | Engenheiro | Entregue: página, conferência, `/api/saude`, guia e docs (1510/1510) |
+| 1 | QA | Aprovado; 15 testes de borda (`producao.qa.test.ts`) |
+| 1 | Tech lead | Reprovado: comentário, fontes e 4 GB (itens 6 a 8) |
+| 2 | Engenheiro | Entregue: itens 6 a 8 corrigidos, 2 testes novos (1527/1527) |
+| 2 | QA | Reprovado: Timeout e Ubuntu LTS (itens 9 e 10); `producao-ciclo2.qa.test.ts` |
+| 3 | Engenheiro | Entregue: itens 9 e 10 corrigidos (1535/1535) |
+| 3 | QA | Aprovado; 7 testes (`producao-ciclo3.qa.test.ts`), 1542/1542 |
+| 3 | Tech lead | Aprovado, sem apontamentos |
+
+### Situação
+
+**Aprovada.** `npm test`: núcleo 395/395, plataforma 1542/1542; `typecheck` e `lint` sem erros. Na 3003, `/api/saude` responde 200 `{"ok":true}` com `no-store` e `/admin/producao` mostra 8 OK e 7 Falta, coerentes com o desenvolvimento. `serpro_chamadas` continua com 30 linhas. Parte 2 marcada como FEITO em 22/10/2026 no `plano.txt`. Sem pendências.

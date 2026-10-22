@@ -40,7 +40,7 @@ PARTE 1 - NÚCLEO (SEM TELA)  [FEITO em 16/10/2026: núcleo completo; catálogo 
  6. Tabela de regras por CNAE de TI: anexo fixo, depende do Fator R, ou não atendido.
  7. Testes de tudo, usando os casos reais como referência (ex.: DAS de 09/2026 = R$ 1.000,76).
 
-PARTE 2 - BASE DA PLATAFORMA  [FEITO em 21/10/2026: abas Plano e Segurança em /admin/plano com componente único de abas]
+PARTE 2 - BASE DA PLATAFORMA  [FEITO em 22/10/2026: página /admin/producao com guia do Coolify, conferência e /api/saude]
  8. Site Next.js com banco Postgres e migrações.
  9. Login com Google e autorização, portados do projeto horizons (github.com/lucasjavit/horizons):
     - Google Identity Services (ID token) conferido no servidor com google-auth-library
