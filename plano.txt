@@ -129,7 +129,7 @@ certificado do cliente nunca vai ao servidor, nenhum segredo no git.
   Correção: subir em 127.0.0.1, recusar Host que não seja localhost e só aceitar AUTH_DISABLED em development
   (plataforma/lib/autenticacao/config.ts, sessao-local.ts).
 - [Média] O Postgres está aberto na rede (0.0.0.0:5433) com a senha padrão "desenvolvimento", que está no
-  .env.exemplo do git (docker-compose.dev.yml). Correção: publicar só em 127.0.0.1 e senha forte fora do git.
+  .env.exemplo do git (compose de desenvolvimento, removido em 22/10/2026; o contêiner local continua publicado). Correção: publicar só em 127.0.0.1 e senha forte fora do git.
 - [Média] Sem limite de tentativas no login, na consulta de CNPJ e nas ações. Depende da hospedagem (Parte 9).
 - [Média] Sem backup nem cópia segura das chaves de criptografia: se o .env.local se perder, os termos e o certificado
   guardados ficam ilegíveis para sempre. Depende da hospedagem (Parte 9).
@@ -146,7 +146,7 @@ certificado do cliente nunca vai ao servidor, nenhum segredo no git.
 
 DECISÕES TOMADAS
 - Banco: Postgres 17 (Docker no desenvolvimento, porta 5433), Drizzle ORM + postgres.js, migrações com drizzle-kit.
-  No ar desde 16/10/2026. Docker na raiz (docker-compose.dev.yml local, docker-compose.yml no Coolify): só o banco (npm run banco:subir) ou tudo, banco + plataforma
+  No ar desde 16/10/2026. Docker na raiz (docker-compose.yaml no Coolify, sempre .yaml): só o banco (npm run banco:subir) ou tudo, banco + plataforma
   na porta 3002 (npm run docker:subir).
 
 - Login: Google, com autenticação e autorização portadas do horizons (ver Parte 2, passo 9).

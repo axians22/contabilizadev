@@ -172,7 +172,7 @@ export const GUIA: SecaoDoGuia[] = [
       {
         id: "criar-postgres",
         texto: "No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.",
-        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.dev.yml)."],
+        detalhe: ["O padrão do Coolify é o 18: escolha o 17, o mesmo do Postgres local."],
         fontes: [F.postgres],
       },
       {
@@ -215,6 +215,7 @@ export const GUIA: SecaoDoGuia[] = [
         detalhe: [
           "O build é feito a partir da raiz do repositório (o Dockerfile copia nucleo/, plataforma/ e o plano.txt).",
           "O clone do GitHub não tem o plataforma/.env.local (fora do git): os segredos vêm só das variáveis do Coolify.",
+          "Com o build pack Docker Compose: Docker Compose Location /docker-compose.yaml. O arquivo tem de ter a extensão .yaml: com .yml o Coolify não carrega o compose.",
         ],
         fontes: [F.dockerfile, F.dockerfileDoProjeto],
       },

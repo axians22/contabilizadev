@@ -1,6 +1,6 @@
 # Produção (ou teste) no Coolify com o build pack Docker Compose.
-# No recurso: Base Directory "/" e Docker Compose Location "/docker-compose.yml".
-# O ambiente local (banco para o npm run dev) fica em docker-compose.dev.yml.
+# No recurso: Base Directory "/" e Docker Compose Location "/docker-compose.yaml".
+# A extensão tem de ser .yaml: com .yml o Coolify não carrega o compose.
 # Domínio: em Domains, no serviço "plataforma", com a porta interna no fim: https://<seu-domínio>:3001
 #
 # - O banco não publica porta nenhuma: só a plataforma o alcança, pela rede interna do Coolify.

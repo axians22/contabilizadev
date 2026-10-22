@@ -27,6 +27,9 @@ O plano por partes está em `plano.txt` (com a seção DECISÕES TOMADAS no fim)
 
 ## Ambiente local
 
+- Produção no Coolify pelo `docker-compose.yaml` da raiz. Compose para o Coolify **sempre `.yaml`**, nunca `.yml`: com
+  `.yml` o Coolify não carrega o arquivo.
+
 - Banco: Postgres 17 no Docker, porta 5433. Desenvolvimento `contabilizadev` (tem **dados reais** do usuário: a empresa
   43.079.489/0001-41, o certificado e as chaves da plataforma, o histórico importado). Testes em `contabilizadev_teste`.
 - **Porta 3001 é de outro projeto (memo-stick) e a 3000 é do `../fiscal`.** O contabilizadev roda em

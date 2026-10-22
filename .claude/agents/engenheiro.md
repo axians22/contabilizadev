@@ -30,7 +30,8 @@ Não deixe pendências na entrega: nada de função que lança erro por falta de
 - `plataforma/` — Next.js 16 + Tailwind 4 + Drizzle (Postgres). Este Next tem mudanças em relação ao que você
   conhece: leia `plataforma/AGENTS.md` e o guia em `node_modules/next/dist/docs/` antes de usar APIs do Next.
   Banco: esquema em `plataforma/banco/esquema.ts`, migrações com `npm run banco:gerar`.
-- Docker na raiz (`docker-compose.dev.yml` local, `docker-compose.yml` de produção no Coolify, `Dockerfile`, `.dockerignore`). O Postgres local está em `localhost:5433` (`npm run banco:subir`).
+- Docker na raiz: `Dockerfile`, `.dockerignore` e `docker-compose.yaml` (produção no Coolify). Compose para o Coolify
+  **sempre com a extensão `.yaml`** (nunca `.yml`): com `.yml` o Coolify não carrega o arquivo. O Postgres local está em `localhost:5433` (`npm run banco:subir`).
 - Referência: `../fiscal` é o site pessoal que já funciona com dados reais. Copie e generalize de lá; **nunca
   altere** arquivos em `../fiscal`.
 

@@ -91,7 +91,7 @@ contabilizadev.com.br apontando para o servidor, com certificado automático.
 Postgres 17 como recurso do Coolify, só na rede interna.
 
 - [ ] No projeto, New Resource › Databases › PostgreSQL, na mesma destination (rede) da aplicação, com a versão 17.
-  - O padrão do Coolify é o 18: escolha o 17, o mesmo do desenvolvimento (docker-compose.dev.yml).
+  - O padrão do Coolify é o 18: escolha o 17, o mesmo do Postgres local.
   - Fonte: [Coolify: PostgreSQL](https://coolify.io/docs/databases/postgresql)
 - [ ] Deixe o Public access desligado (sem TCP proxy): o banco só é visto pela aplicação.
   - A documentação recomenda a rede privada para a aplicação e expor a 5432 só quando um cliente externo precisar. Aqui, nunca.
@@ -114,6 +114,7 @@ Build pelo Dockerfile, a partir do GitHub.
 - [ ] Crie a aplicação (+ New › Private Repository) com Build pack Dockerfile, Base Directory / e Dockerfile Location /Dockerfile, branch main.
   - O build é feito a partir da raiz do repositório (o Dockerfile copia nucleo/, plataforma/ e o plano.txt).
   - O clone do GitHub não tem o plataforma/.env.local (fora do git): os segredos vêm só das variáveis do Coolify.
+  - Com o build pack Docker Compose: Docker Compose Location /docker-compose.yaml. O arquivo tem de ter a extensão .yaml: com .yml o Coolify não carrega o compose.
   - Fonte: [Coolify: build pack Dockerfile](https://coolify.io/docs/applications/builds/dockerfile) · Dockerfile do projeto (`Dockerfile`)
 - [ ] Ports Exposes: 3001 (o next start do container escuta nessa porta).
   - O processo precisa escutar em 0.0.0.0, não só em 127.0.0.1, para o proxy do Coolify alcançar: o next start já escuta em todas as interfaces.
